@@ -28,7 +28,7 @@
   <link rel="preload" href="assets/logo.webp" as="image" type="image/webp">
   <!-- ?v= bei jeder Änderung an CSS/JS hochzählen: nginx lässt Browser
        .css/.js einen Tag cachen, mit neuer Version laden alle sofort neu -->
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -41,6 +41,12 @@
   </div>
 
   <main class="page">
+
+    <!-- Sprache (Texte in i18n.js) -->
+    <div class="lang-switch" role="group" aria-label="Sprache / Language">
+      <button type="button" data-lang="de" aria-pressed="true">DE</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
 
     <header class="hero">
       <h1 class="logo">
@@ -82,7 +88,7 @@
 
     <!-- Route & Zeitplan (Inhalt kommt aus reise.js) -->
     <section class="card route" aria-labelledby="route-title">
-      <h2 id="route-title" class="section-title">Unsere Route</h2>
+      <h2 id="route-title" class="section-title" data-i18n="route.title">Unsere Route</h2>
       <div class="route-map" id="route-map"></div>
       <ol class="timeline" id="timeline"></ol>
     </section>
@@ -91,10 +97,10 @@
          Foto hinzufügen: Bild als img/<name>.jpg ablegen (quadratisch, ~400x400px).
          Solange kein Foto da ist, werden automatisch die Initialen angezeigt. -->
     <section class="card crew" aria-labelledby="crew-title">
-      <h2 id="crew-title" class="section-title">Die Crew</h2>
+      <h2 id="crew-title" class="section-title" data-i18n="crew.title">Die Crew</h2>
       <ul class="crew-grid">
         <li>
-          <a class="member" href="https://www.instagram.com/berry_michi/" target="_blank" rel="noopener" aria-label="Berry auf Instagram (@berry_michi)">
+          <a class="member" href="https://www.instagram.com/berry_michi/" target="_blank" rel="noopener" aria-label="Berry auf Instagram (@berry_michi)" data-i18n-attr="aria-label:crew.on" data-i18n-vars='{"name":"Berry","handle":"@berry_michi"}'>
             <span class="avatar" data-initials="B">
               <img src="img/berry.jpg" alt="" loading="lazy" onerror="this.remove()">
             </span>
@@ -103,7 +109,7 @@
           </a>
         </li>
         <li>
-          <a class="member" href="https://www.instagram.com/dj.dav3/" target="_blank" rel="noopener" aria-label="DjDave auf Instagram (@dj.dav3)">
+          <a class="member" href="https://www.instagram.com/dj.dav3/" target="_blank" rel="noopener" aria-label="DjDave auf Instagram (@dj.dav3)" data-i18n-attr="aria-label:crew.on" data-i18n-vars='{"name":"DjDave","handle":"@dj.dav3"}'>
             <span class="avatar" data-initials="DD">
               <img src="img/djdave.jpg" alt="" loading="lazy" onerror="this.remove()">
             </span>
@@ -112,7 +118,7 @@
           </a>
         </li>
         <li>
-          <a class="member" href="https://www.instagram.com/m94856/" target="_blank" rel="noopener" aria-label="Wokky auf Instagram (@m94856)">
+          <a class="member" href="https://www.instagram.com/m94856/" target="_blank" rel="noopener" aria-label="Wokky auf Instagram (@m94856)" data-i18n-attr="aria-label:crew.on" data-i18n-vars='{"name":"Wokky","handle":"@m94856"}'>
             <span class="avatar" data-initials="W">
               <img src="img/wokky.jpg" alt="" loading="lazy" onerror="this.remove()">
             </span>
@@ -121,7 +127,7 @@
           </a>
         </li>
         <li>
-          <a class="member" href="https://www.instagram.com/tims_uhr/" target="_blank" rel="noopener" aria-label="Tim_TMTM auf Instagram (@tims_uhr)">
+          <a class="member" href="https://www.instagram.com/tims_uhr/" target="_blank" rel="noopener" aria-label="Tim_TMTM auf Instagram (@tims_uhr)" data-i18n-attr="aria-label:crew.on" data-i18n-vars='{"name":"Tim_TMTM","handle":"@tims_uhr"}'>
             <span class="avatar" data-initials="T">
               <img src="img/tim.jpg" alt="" loading="lazy" onerror="this.remove()">
             </span>
@@ -134,11 +140,11 @@
 
     <!-- Gästebuch (Inhalt kommt aus guestbook.js, Backend: server/ im Repo) -->
     <section class="card guestbook" aria-labelledby="gb-title">
-      <h2 id="gb-title" class="section-title">Gästebuch</h2>
+      <h2 id="gb-title" class="section-title" data-i18n="gb.title">Gästebuch</h2>
       <form class="gb-form" id="gb-form" novalidate>
         <div class="gb-fields">
-          <input class="gb-input" name="name" maxlength="40" placeholder="Dein Name" autocomplete="nickname" aria-label="Name" required>
-          <textarea class="gb-input" name="message" maxlength="500" rows="3" placeholder="Lass uns einen Gruß da 🤙" aria-label="Nachricht" required></textarea>
+          <input class="gb-input" name="name" maxlength="40" placeholder="Dein Name" autocomplete="nickname" aria-label="Name" data-i18n-attr="placeholder:gb.name;aria-label:gb.nameLabel" required>
+          <textarea class="gb-input" name="message" maxlength="500" rows="3" placeholder="Lass uns einen Gruß da 🤙" aria-label="Nachricht" data-i18n-attr="placeholder:gb.message;aria-label:gb.messageLabel" required></textarea>
         </div>
         <!-- Bot-Falle: für Menschen nie sichtbar (Inline-Style, wirkt auch
              ohne CSS), Bots füllen das Feld aus und werden verworfen -->
@@ -147,20 +153,20 @@
         </div>
         <div class="gb-photos" id="gb-photos">
           <label class="gb-add" id="gb-add">
-            <input type="file" id="gb-file" accept="image/*" multiple aria-label="Fotos hinzufügen">
+            <input type="file" id="gb-file" accept="image/*" multiple aria-label="Fotos hinzufügen" data-i18n-attr="aria-label:gb.addPhotos">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-            <span>Foto</span>
+            <span data-i18n="gb.photo">Foto</span>
           </label>
         </div>
         <p class="gb-hint" id="gb-hint">Bis zu 3 Fotos</p>
-        <button class="gb-submit" type="submit">Eintragen</button>
+        <button class="gb-submit" type="submit" data-i18n="gb.submit">Eintragen</button>
       </form>
       <ol class="gb-list" id="gb-list"></ol>
     </section>
 
     <button class="share-btn" id="share" type="button">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Seite teilen
+      <span data-i18n="share.button">Seite teilen</span>
     </button>
 
   </main>
@@ -179,10 +185,11 @@
 
   <dialog class="gb-lightbox" id="gb-lightbox" aria-label="Bild"><img alt=""></dialog>
 
+  <script src="i18n.js?v=4" defer></script>
   <script src="reise.js" defer></script>
-  <script src="karte-land.js?v=3" defer></script>
-  <script src="trip.js?v=3" defer></script>
-  <script src="script.js?v=3" defer></script>
-  <script src="guestbook.js?v=3" defer></script>
+  <script src="karte-land.js?v=4" defer></script>
+  <script src="trip.js?v=4" defer></script>
+  <script src="script.js?v=4" defer></script>
+  <script src="guestbook.js?v=4" defer></script>
 </body>
 </html>

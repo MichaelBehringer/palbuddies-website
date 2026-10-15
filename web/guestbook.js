@@ -11,6 +11,7 @@
   const ADMIN_KEY = 'gb-admin';
 
   const $ = (sel) => document.querySelector(sel);
+  const { t } = window.I18N;
   const form = $('#gb-form');
   if (!form) return;
   const list = $('#gb-list');
@@ -54,7 +55,7 @@
     } catch (_) { /* gilt dann nur bis zum Neuladen */ }
     // Token sofort aus der Adresszeile (und damit aus dem Verlauf) entfernen
     history.replaceState(null, '', location.pathname + location.search);
-    setTimeout(() => toast(adminToken ? 'Admin-Modus an' : 'Admin-Modus aus'), 300);
+    setTimeout(() => toast(t(adminToken ? 'gb.adminOn' : 'gb.adminOff')), 300);
     return true;
   }
   applyAdminHash();
@@ -101,11 +102,11 @@
       const wrap = el('div', 'gb-preview');
       const img = el('img');
       img.src = item.url;
-      img.alt = `Foto ${i + 1}`;
+      img.alt = t('gb.photoN', { n: i + 1 });
       const del = el('button');
       del.type = 'button';
       del.innerHTML = XMARK;
-      del.setAttribute('aria-label', `Foto ${i + 1} entfernen`);
+      del.setAttribute('aria-label', t('gb.removePhoto', { n: i + 1 }));
       del.addEventListener('click', () => {
         URL.revokeObjectURL(item.url);
         images.splice(i, 1);
@@ -116,8 +117,8 @@
     });
     addTile.hidden = images.length >= MAX_IMAGES;
     hint.textContent = images.length
-      ? `${images.length} von ${MAX_IMAGES} Fotos`
-      : `Bis zu ${MAX_IMAGES} Fotos`;
+      ? t('gb.hintCount', { n: images.length, max: MAX_IMAGES })
+      : t('gb.hint', { max: MAX_IMAGES });
   }
 
   function clearImages() {
@@ -130,13 +131,13 @@
     const files = [...fileInput.files];
     fileInput.value = ''; // gleiche Datei erneut wählbar
     const free = MAX_IMAGES - images.length;
-    if (files.length > free) toast(`Maximal ${MAX_IMAGES} Fotos`);
+    if (files.length > free) toast(t('gb.maxPhotos', { max: MAX_IMAGES }));
     for (const file of files.slice(0, free)) {
       try {
         const blob = await compress(file);
         images.push({ blob, url: URL.createObjectURL(blob) });
       } catch (_) {
-        toast('Bildformat nicht unterstützt');
+        toast(t('gb.badFormat'));
       }
     }
     renderPreviews();
@@ -148,7 +149,7 @@
     const name = form.elements.name.value.trim();
     const message = form.elements.message.value.trim();
     if (!name || !message) {
-      toast('Bitte Name und Nachricht ausfüllen');
+      toast(t('gb.fillIn'));
       return;
     }
 
@@ -158,32 +159,31 @@
     data.append('website', form.elements.website.value);
     images.forEach((item, i) => data.append('images', item.blob, `bild${i + 1}.jpg`));
 
-    const label = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.textContent = images.length ? 'Wird hochgeladen …' : 'Wird gesendet …';
+    submitBtn.textContent = t(images.length ? 'gb.uploading' : 'gb.sending');
     try {
       const res = await fetch(API, { method: 'POST', body: data });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        toast(body.error || (res.status === 413 ? 'Zu groß – maximal 12 MB' : 'Hat leider nicht geklappt'));
+        toast(errorText(body, res.status));
         return;
       }
       form.reset();
       clearImages();
-      toast('Danke für deinen Eintrag ✓');
+      toast(t('gb.thanks'));
       load();
     } catch (_) {
-      toast('Keine Verbindung – bitte nochmal versuchen');
+      toast(t('gb.offline'));
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = label;
+      submitBtn.textContent = t('gb.submit');
     }
   });
 
   /* ---------- Einträge anzeigen ----------
      Nutzertext nur über textContent, nie über innerHTML (Schutz vor XSS). */
-  const dateFmt = new Intl.DateTimeFormat('de-DE', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  const dateFmt = () => new Intl.DateTimeFormat(window.I18N.locale, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
   });
   const isImageURL = (u) => typeof u === 'string' && u.startsWith(API + '/img/');
 
@@ -196,10 +196,12 @@
     li.append(avatar, body);
 
     const head = el('div', 'gb-head');
-    const time = el('time', 'gb-date', dateFmt.format(entry.created * 1000));
+    const time = el('time', 'gb-date', dateFmt().format(entry.created * 1000));
     time.dateTime = new Date(entry.created * 1000).toISOString();
     head.append(el('strong', 'gb-name', entry.name), time);
-    body.append(head, el('p', 'gb-msg', entry.message));
+    const msg = el('p', 'gb-msg', entry.message);
+    body.append(head, msg);
+    body.append(translateRow(entry, msg));
 
     const imgs = (entry.images || []).filter((im) => isImageURL(im.full) && isImageURL(im.thumb));
     if (imgs.length) {
@@ -207,7 +209,7 @@
       imgs.forEach((im, i) => {
         const btn = el('button', 'gb-thumb');
         btn.type = 'button';
-        btn.setAttribute('aria-label', `Bild ${i + 1} von ${entry.name} vergrößern`);
+        btn.setAttribute('aria-label', t('gb.enlarge', { n: i + 1, name: entry.name }));
         const img = el('img');
         img.src = im.thumb;
         img.alt = '';
@@ -224,46 +226,129 @@
       const del = el('button', 'gb-del');
       del.type = 'button';
       del.innerHTML = XMARK;
-      del.setAttribute('aria-label', `Eintrag von ${entry.name} löschen`);
+      del.setAttribute('aria-label', t('gb.delete', { name: entry.name }));
       del.addEventListener('click', () => removeEntry(entry, li));
       li.append(del);
     }
     return li;
   }
 
+  let entries = null; // zuletzt geladene Einträge, zum Neuzeichnen beim Sprachwechsel
+
+  function render() {
+    if (!entries) {
+      list.replaceChildren(el('li', 'gb-empty', t('gb.unavailable')));
+    } else if (!entries.length) {
+      list.replaceChildren(el('li', 'gb-empty', t('gb.empty')));
+    } else {
+      list.replaceChildren(...entries.map(renderEntry));
+    }
+  }
+
   async function load() {
     try {
       const res = await fetch(API, { cache: 'no-store' });
       if (!res.ok) throw new Error(res.status);
-      const entries = await res.json();
-      if (!entries.length) {
-        list.replaceChildren(el('li', 'gb-empty', 'Noch keine Einträge – schreib den ersten!'));
-        return;
-      }
-      list.replaceChildren(...entries.map(renderEntry));
+      entries = await res.json();
     } catch (_) {
-      list.replaceChildren(el('li', 'gb-empty', 'Gästebuch gerade nicht erreichbar'));
+      entries = null;
+    }
+    render();
+  }
+
+  // Fehlermeldung vom Server in der Seitensprache (Server liefert einen Code)
+  function errorText(body, status) {
+    if (body && body.code) return t('err.' + body.code);
+    return t(status === 413 ? 'err.too_large' : 'gb.failed');
+  }
+
+  /* ---------- Übersetzen ----------
+     Übersetzt wird in die Sprache des Geräts/Browsers (nicht die der Seite).
+     Der Server merkt sich jede Übersetzung, DeepL wird pro Eintrag und
+     Sprache nur einmal gefragt. */
+  const deviceLang = navigator.language || 'en';
+  const translated = new Map(); // entry.id -> { text, source, showing }
+
+  function languageName(code) {
+    try {
+      return new Intl.DisplayNames([window.I18N.locale], { type: 'language' }).of(code.toLowerCase());
+    } catch (_) {
+      return code;
     }
   }
 
+  function translateRow(entry, msg) {
+    const row = el('div', 'gb-tr');
+    const btn = el('button', 'gb-tr-btn');
+    btn.type = 'button';
+    const note = el('span', 'gb-tr-note');
+
+    function show() {
+      const state = translated.get(entry.id);
+      const showing = state && state.showing;
+      msg.textContent = showing ? state.text : entry.message;
+      msg.lang = showing ? deviceLang : '';
+      note.textContent = showing
+        ? (state.source ? t('gb.translatedFrom', { lang: languageName(state.source) }) : t('gb.translatedFromUnknown'))
+        : '';
+      btn.textContent = showing ? t('gb.showOriginal') : t('gb.translate');
+    }
+
+    btn.addEventListener('click', async () => {
+      const state = translated.get(entry.id);
+      if (state) { // schon übersetzt: nur umschalten
+        state.showing = !state.showing;
+        show();
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = t('gb.translating');
+      try {
+        const res = await fetch(`${API}/${entry.id}/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lang: deviceLang }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast(errorText(body, res.status));
+        } else if (body.same) {
+          toast(t('gb.alreadyYourLanguage'));
+        } else {
+          translated.set(entry.id, { text: body.text, source: body.source, showing: true });
+        }
+      } catch (_) {
+        toast(t('gb.offline'));
+      } finally {
+        btn.disabled = false;
+        show();
+      }
+    });
+
+    show();
+    row.append(btn, note);
+    return row;
+  }
+
   async function removeEntry(entry, li) {
-    if (!confirm(`Eintrag von „${entry.name}“ wirklich löschen?`)) return;
+    if (!confirm(t('gb.confirmDelete', { name: entry.name }))) return;
     try {
       const res = await fetch(`${API}/${entry.id}`, {
         method: 'DELETE',
         headers: { 'X-Admin-Token': adminToken },
       });
       if (res.status === 204 || res.status === 404) {
+        entries = entries.filter((e) => e.id !== entry.id);
         li.remove();
-        toast('Gelöscht ✓');
-        if (!list.children.length) load();
+        toast(t('gb.deleted'));
+        if (!entries.length) render();
       } else if (res.status === 403) {
-        toast('Admin-Token ungültig');
+        toast(t('gb.adminInvalid'));
       } else {
-        toast('Löschen hat nicht geklappt');
+        toast(t('gb.deleteFailed'));
       }
     } catch (_) {
-      toast('Keine Verbindung');
+      toast(t('gb.offline'));
     }
   }
 
@@ -277,5 +362,11 @@
   lightbox.addEventListener('click', () => lightbox.close());
   lightbox.addEventListener('close', () => { lightboxImg.removeAttribute('src'); });
 
+  window.addEventListener('langchange', () => {
+    renderPreviews();
+    if (entries) render();
+  });
+
+  renderPreviews();
   load();
 })();

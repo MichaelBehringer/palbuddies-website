@@ -24,7 +24,7 @@
   $('#share').addEventListener('click', async () => {
     const data = {
       title: 'PalBuddies',
-      text: 'Check die PalBuddies auf Insta & TikTok 🤙',
+      text: window.I18N.t('share.text'),
       url: location.origin + location.pathname,
     };
     haptic();
@@ -34,7 +34,7 @@
     }
     try {
       await navigator.clipboard.writeText(data.url);
-      toast('Link kopiert ✓');
+      toast(window.I18N.t('share.copied'));
     } catch (_) {
       toast(data.url);
     }

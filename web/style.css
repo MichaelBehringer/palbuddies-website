@@ -102,6 +102,41 @@ button { font: inherit; color: inherit; }
   gap: 18px;
 }
 
+/* ---------- Sprachumschalter (Segmented Control wie in iOS) ---------- */
+.lang-switch {
+  align-self: flex-end;
+  display: inline-flex;
+  margin-bottom: -10px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .55);
+  box-shadow: 0 0 0 .5px rgba(60, 60, 67, .16), 0 6px 16px -10px rgba(40, 10, 60, .45);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+          backdrop-filter: saturate(180%) blur(20px);
+  animation: fade-up .6s .1s ease-out both;
+}
+.lang-switch button {
+  min-width: 44px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(29, 29, 31, .6);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background .25s ease, color .25s ease, box-shadow .25s ease;
+}
+.lang-switch button[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(40, 10, 60, .18), 0 0 0 .5px rgba(60, 60, 67, .12);
+}
+.lang-switch button:focus-visible { outline: 3px solid var(--pink); outline-offset: 1px; }
+
 /* ---------- Hero ---------- */
 .hero {
   text-align: center;
@@ -930,6 +965,29 @@ button { font: inherit; color: inherit; }
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+.gb-tr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin-top: 6px;
+}
+.gb-tr-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gb-tr-btn:disabled { opacity: .6; cursor: progress; }
+.gb-tr-btn:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; border-radius: 4px; }
+.gb-tr-note {
+  font-size: 12px;
+  color: rgba(60, 60, 67, .6);
+}
+.gb-tr-note:empty { display: none; }
 .gb-empty {
   padding: 6px 4px 0;
   color: rgba(60, 60, 67, .7);

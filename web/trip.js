@@ -4,6 +4,7 @@
 
   const R = window.REISE;
   if (!R || !Array.isArray(R.stationen)) return;
+  const { t, pick } = window.I18N;
 
   const stops = R.stationen;
   const START = new Date(R.abflug);
@@ -23,11 +24,16 @@
   const toUTC = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
   const dayDiff = (a, b) => Math.round((toUTC(b) - toUTC(a)) / 864e5);
 
-  const fmtDay = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const fmtWeekday = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const dayLabel = (s) => fmtDay.format(toUTC(s)).replace('.', '');
-  const weekdayLabel = (s) => fmtWeekday.format(toUTC(s));
-  const localTime = (tz, d) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(d);
+  // Datumsformate je Sprache (I18N.locale), einmal angelegt und gemerkt
+  const fmtCache = {};
+  function fmt(name, opts) {
+    const key = window.I18N.locale + name;
+    return (fmtCache[key] ||= new Intl.DateTimeFormat(window.I18N.locale, opts));
+  }
+  const dayLabel = (s) => fmt('day', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(toUTC(s)).replace('.', '');
+  const weekdayLabel = (s) => fmt('weekday', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(toUTC(s));
+  const localTime = (tz, d) => fmt('time' + tz, { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(d);
+  const place = (s) => `${pick(s, 'ort')} ${s.flagge || ''}`.trim();
 
   /* ---------- Status pro Station ---------- */
   function stateOf(stop, d) {
@@ -99,7 +105,8 @@
     countdownEl.replaceChildren();
     countdownEl.dataset.phase = ph;
 
-    const eyebrow = el('p', 'eyebrow', R.titel ? `${R.titel} ${START.getFullYear()}` : 'Unsere Reise');
+    const titel = pick(R, 'titel');
+    const eyebrow = el('p', 'eyebrow', titel ? `${titel} ${START.getFullYear()}` : t('trip.eyebrow'));
     countdownEl.append(eyebrow);
 
     if (ph === 'before') {
@@ -108,19 +115,20 @@
       const hrs = Math.floor(s / 3600); s %= 3600;
       const min = Math.floor(s / 60); const sec = s % 60;
 
-      countdownEl.append(el('h2', 'cd-title', 'Abflug in'));
+      countdownEl.append(el('h2', 'cd-title', t('trip.departure')));
       const row = el('div', 'cd-row');
-      row.append(unit(days, days === 1 ? 'Tag' : 'Tage'), unit(hrs, 'Std'), unit(min, 'Min'), unit(sec, 'Sek'));
+      row.append(unit(days, t(days === 1 ? 'trip.day' : 'trip.days')), unit(hrs, t('trip.hours')),
+        unit(min, t('trip.minutes')), unit(sec, t('trip.seconds')));
       countdownEl.append(row);
-      countdownEl.append(el('p', 'cd-sub',
-        `${weekdayLabel(homeStart)} · ${localTime(HOME_TZ, START)} ab Frankfurt ✈️ ${firstStop.ort} ${firstStop.flagge || ''}`));
+      countdownEl.append(el('p', 'cd-sub', t('trip.fromFrankfurt',
+        { day: weekdayLabel(homeStart), time: localTime(HOME_TZ, START), place: place(firstStop) })));
       return;
     }
 
     if (ph === 'after') {
-      countdownEl.append(el('h2', 'cd-title', 'Wieder daheim 🏠'));
+      countdownEl.append(el('h2', 'cd-title', t('trip.home')));
       countdownEl.append(el('p', 'cd-sub',
-        `${totalDays} Tage · ${cities.size} Städte · ${countries.size} Länder. Danke fürs Mitfiebern!`));
+        t('trip.summary', { days: totalDays, cities: cities.size, countries: countries.size })));
       return;
     }
 
@@ -130,7 +138,7 @@
     const dayNo = Math.min(totalDays, dayDiff(homeStart, ymd(d, tz)) + 1);
     const progress = Math.min(1, Math.max(0, (d - START) / (END - START)));
 
-    countdownEl.append(el('h2', 'cd-title', `Tag ${dayNo} von ${totalDays}`));
+    countdownEl.append(el('h2', 'cd-title', t('trip.dayOf', { n: dayNo, total: totalDays })));
 
     const bar = el('div', 'progress');
     const fill = el('span', 'progress-fill');
@@ -141,25 +149,24 @@
     let where;
     if (current.length === 1) {
       const c = current[0];
-      where = `📍 Gerade in ${c.ort} ${c.flagge || ''} · ${localTime(c.zeitzone, d)} Uhr Ortszeit`;
+      where = t('trip.currentlyIn', { place: place(c), time: localTime(c.zeitzone, d) });
     } else if (current.length > 1) {
-      const a = current[0], b = current[current.length - 1];
-      where = `🧳 Reisetag: ${a.ort} ${a.flagge || ''} → ${b.ort} ${b.flagge || ''}`;
+      where = t('trip.travelDay', { from: place(current[0]), to: place(current[current.length - 1]) });
     } else {
       const next = stops.find((s) => stateOf(s, d) === 'future');
-      where = next ? `✈️ Unterwegs nach ${next.ort} ${next.flagge || ''}` : '✈️ Unterwegs';
+      where = next ? t('trip.onTheWayTo', { place: place(next) }) : t('trip.onTheWay');
     }
     countdownEl.append(el('p', 'cd-where', where));
 
     const plan = todaysPlan(d, current);
     if (plan.length) {
       const box = el('div', 'today');
-      box.append(el('p', 'today-title', 'Heute geplant'));
+      box.append(el('p', 'today-title', t('trip.today')));
       const ul = el('ul', 'plan-list');
       for (const p of plan) {
         const li = el('li');
-        if (p.zeit) li.append(el('span', 'plan-time', p.zeit));
-        li.append(el('span', 'plan-what', p.was));
+        if (p.zeit) li.append(el('span', 'plan-time', pick(p, 'zeit')));
+        li.append(el('span', 'plan-what', pick(p, 'was')));
         ul.append(li);
       }
       box.append(ul);
@@ -194,7 +201,7 @@
     const offY = (H - (maxLat - minLat) * scale) / 2;
     const proj = ([lat, lon]) => [offX + (lon - minLon) * k * scale, offY + (maxLat - lat) * scale];
 
-    const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Karte: ' + [...new Set(mapStops.map((s) => s.ort))].join(', ') });
+    const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': t('trip.map') + ': ' + [...new Set(mapStops.map((s) => pick(s, 'ort')))].join(', ') });
 
     const defs = svg('defs', {});
     const pat = svg('pattern', { id: 'dots', width: '14', height: '14', patternUnits: 'userSpaceOnUse' });
@@ -240,7 +247,7 @@
       let pos = s.beschriftung;
       if (!pos) pos = y < cy0 ? 'oben' : 'unten';
       const o = { links: [-13, 5, 'end'], rechts: [13, 5, 'start'], oben: [0, -14, 'middle'], unten: [0, 24, 'middle'] }[pos] || [13, 5, 'start'];
-      g.append(svg('text', { x: x + o[0], y: y + o[1], 'text-anchor': o[2], class: 'pin-label' }, `${s.flagge || ''} ${s.ort}${s.zusatz ? ` (${s.zusatz})` : ''}`.trim()));
+      g.append(svg('text', { x: x + o[0], y: y + o[1], 'text-anchor': o[2], class: 'pin-label' }, `${s.flagge || ''} ${pick(s, 'ort')}${s.zusatz ? ` (${pick(s, 'zusatz')})` : ''}`.trim()));
       root.append(g);
     }
 
@@ -281,12 +288,12 @@
       const gSum = el('summary');
       gSum.append(el('span', 'group-flag', gStops[0].flagge || '📍'));
       const gHead = el('span', 'stop-head');
-      gHead.append(el('span', 'group-name', land));
-      const cityNames = [...new Set(gStops.map((s) => s.ort))].join(', ');
+      gHead.append(el('span', 'group-name', pick(gStops[0], 'land')));
+      const cityNames = [...new Set(gStops.map((s) => pick(s, 'ort')))].join(', ');
       gHead.append(el('span', 'stop-dates', rangeText));
       gHead.append(el('span', 'group-cities', cityNames));
       gSum.append(gHead);
-      if (gState === 'now') gSum.append(el('span', 'badge now', 'Jetzt'));
+      if (gState === 'now') gSum.append(el('span', 'badge now', t('trip.now')));
       else if (gState === 'past') gSum.append(el('span', 'badge past', '✓'));
       gSum.append(el('span', 'stop-chev'));
       gDet.append(gSum);
@@ -307,19 +314,19 @@
       const sum = el('summary');
       sum.append(el('span', 'stop-flag', s.flagge || '📍'));
       const head = el('span', 'stop-head');
-      head.append(el('span', 'stop-name', s.ort));
+      head.append(el('span', 'stop-name', pick(s, 'ort')));
       const nights = dayDiff(s.von, s.bis);
       const dates = s.von === s.bis ? weekdayLabel(s.von)
-        : `${dayLabel(s.von)} – ${dayLabel(s.bis)} · ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'}`;
+        : `${dayLabel(s.von)} – ${dayLabel(s.bis)} · ${nights} ${t(nights === 1 ? 'trip.night' : 'trip.nights')}`;
       head.append(el('span', 'stop-dates', dates));
       sum.append(head);
-      if (st === 'now') sum.append(el('span', 'badge now', 'Jetzt'));
+      if (st === 'now') sum.append(el('span', 'badge now', t('trip.now')));
       else if (st === 'past') sum.append(el('span', 'badge past', '✓'));
       sum.append(el('span', 'stop-chev'));
       det.append(sum);
 
       const body = el('div', 'stop-body');
-      if (s.anreise) body.append(el('p', 'stop-travel', s.anreise));
+      if (s.anreise) body.append(el('p', 'stop-travel', pick(s, 'anreise')));
 
       const plan = (s.plan || []).slice().sort((a, b) => a.tag.localeCompare(b.tag));
       if (plan.length) {
@@ -331,13 +338,13 @@
             lastDay = p.tag;
           }
           const item = el('li', ymd(d, s.zeitzone || HOME_TZ) > p.tag ? 'plan-item done' : 'plan-item');
-          if (p.zeit) item.append(el('span', 'plan-time', p.zeit));
-          item.append(el('span', 'plan-what', p.was));
+          if (p.zeit) item.append(el('span', 'plan-time', pick(p, 'zeit')));
+          item.append(el('span', 'plan-what', pick(p, 'was')));
           ul.append(item);
         }
         body.append(ul);
       } else {
-        body.append(el('p', 'plan-empty', 'Programm folgt … 🤫'));
+        body.append(el('p', 'plan-empty', t('trip.tbd')));
       }
       det.append(body);
       li.append(det);
@@ -353,6 +360,13 @@
   // Karte & Liste nur neu zeichnen, wenn sich ein Status ändert (sonst klappen offene Einträge zu)
   const signature = () => phase(now()) + stops.map((s) => stateOf(s, now())).join();
   let lastSig = signature();
+  // Sprache umgeschaltet: alles neu zeichnen, offene Länder/Stationen bleiben offen
+  window.addEventListener('langchange', () => {
+    const open = [...document.querySelectorAll('#timeline details')].map((x) => x.open);
+    renderCountdown(); renderMap(); renderTimeline();
+    document.querySelectorAll('#timeline details').forEach((x, i) => { if (open[i] != null) x.open = open[i]; });
+  });
+
   setInterval(() => {
     renderCountdown();
     const sig = signature();

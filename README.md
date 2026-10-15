@@ -51,6 +51,30 @@ JPEG (1600 px) plus Vorschau (400 px). Dabei fallen alle Metadaten weg, auch
 GPS-Daten. Limits: 12 MB pro Anfrage, 1 Eintrag pro Minute und IP, 200 Bilder
 pro Tag insgesamt.
 
+## Sprache (DE/EN)
+
+- Erster Besuch: Deutsch, wenn das Gerät auf Deutsch steht, sonst Englisch.
+  Umschalter oben rechts, die Wahl merkt sich der Browser.
+- Feste Texte stehen in `web/i18n.js` (`TEXTE.de` / `TEXTE.en`).
+- Reiseplan: in `web/reise.js` neben jedes Feld die englische Fassung mit
+  `_en` schreiben (`was_en`, `anreise_en`, `ort_en`, `zeit_en` …). Fehlt sie,
+  wird auf Englisch der deutsche Text gezeigt.
+- Nach Änderungen an CSS/JS die `?v=` in `web/index.html` hochzählen.
+
+## Gästebuch übersetzen (DeepL)
+
+Jeder Eintrag hat einen „Übersetzen“-Button; übersetzt wird in die Sprache
+des Geräts. Jede Übersetzung landet in der Tabelle `translations` (pro
+Eintrag und Zielsprache eine Zeile) – DeepL wird nur gefragt, wenn es die
+Kombination noch nicht gibt. Beim Löschen eines Eintrags fallen seine
+Übersetzungen mit weg.
+
+- `DEEPL_API_KEY` in `.env` (leer = Button meldet „nicht verfügbar“).
+  Schlüssel mit `:fx` laufen über api-free.deepl.com.
+- Schutz des Kontingents: höchstens `TRANSLATE_DAILY_CHARS` (Standard 50.000)
+  neu übersetzte Zeichen pro 24 h und 30 neue Übersetzungen pro IP und Stunde.
+  Bereits gespeicherte Übersetzungen gehen immer.
+
 ## Backup
 
 Es reicht, `/srv/palbuddies-data` zu sichern. Für eine konsistente Kopie der
