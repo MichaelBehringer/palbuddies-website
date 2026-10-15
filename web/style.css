@@ -727,6 +727,210 @@ button { font: inherit; color: inherit; }
   to   { opacity: 1; transform: none; }
 }
 
+/* ---------- Gästebuch ---------- */
+.guestbook {
+  padding: 20px 16px 22px;
+  animation: fade-up .6s .52s ease-out both;
+}
+.guestbook .section-title { padding: 0 4px 14px; }
+
+.gb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gb-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(29, 29, 31, .12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .7);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* verhindert Auto-Zoom auf iOS */
+  resize: vertical;
+}
+.gb-input:focus { outline: 3px solid var(--pink); outline-offset: 1px; }
+
+/* Honeypot aus dem Bild schieben, aber nicht display:none (das erkennen Bots) */
+.gb-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.gb-previews {
+  display: flex;
+  gap: 8px;
+}
+.gb-previews:empty { display: none; }
+.gb-preview {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+.gb-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.gb-preview button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.gb-actions {
+  display: flex;
+  gap: 10px;
+}
+.gb-file,
+.gb-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: transform .25s var(--ease-spring), opacity .2s;
+}
+.gb-file {
+  flex: 1;
+  background: rgba(255, 255, 255, .7);
+  border: 1px solid rgba(29, 29, 31, .12);
+  color: var(--ink);
+}
+.gb-file:focus-within { outline: 3px solid var(--pink); outline-offset: 2px; }
+.gb-file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.gb-file svg { width: 20px; height: 20px; flex: none; }
+.gb-file.is-full { opacity: .5; pointer-events: none; }
+.gb-submit {
+  flex: 1;
+  border: 0;
+  background: var(--brand-gradient);
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(120, 40, 0, .35);
+}
+.gb-submit:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+.gb-file:active,
+.gb-submit:active { transform: scale(.96); }
+.gb-submit:disabled { opacity: .6; cursor: progress; }
+
+.gb-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+.gb-entry {
+  position: relative;
+  padding: 14px 4px;
+  border-top: 1px solid rgba(29, 29, 31, .1);
+}
+.gb-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-right: 32px;
+}
+.gb-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.gb-date {
+  flex: none;
+  font-size: 13px;
+  opacity: .6;
+}
+.gb-msg {
+  margin: 4px 0 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.gb-empty {
+  padding: 8px 4px 0;
+  opacity: .6;
+  text-align: center;
+}
+.gb-images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.gb-thumb {
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(29, 29, 31, .06);
+  aspect-ratio: 1;
+  cursor: zoom-in;
+}
+.gb-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gb-thumb:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+.gb-del {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.gb-lightbox {
+  max-width: 94vw;
+  max-height: 90vh;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  cursor: zoom-out;
+}
+.gb-lightbox::backdrop { background: rgba(0, 0, 0, .85); }
+.gb-lightbox img {
+  display: block;
+  max-width: 94vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+}
+
 /* ---------- Desktop: etwas mehr Luft ---------- */
 @media (min-width: 768px) {
   .page { padding-top: 64px; gap: 22px; }

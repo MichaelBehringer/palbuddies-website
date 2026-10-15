@@ -1,0 +1,23 @@
+# Gaestebuch-Backend fuer palbuddies.behringer.dev.
+#
+# Die Website selbst (web/) liefert der edge-nginx aus /root/edge aus, der
+# dieses Verzeichnis nach /srv/www/palbuddies einhaengt. Dieser Stack ist nur
+# fuer /api/guestbook zustaendig, das der edge-nginx hierher durchreicht
+# (/root/edge/conf.d/40-palbuddies.conf).
+
+services:
+  palbuddies-gb:
+    build: ./server
+    restart: always
+    env_file: .env
+    volumes:
+      # Datenbank und Bilder, ausserhalb des Repos und ausserhalb von /srv/www.
+      # Gehoert UID 65532 (nonroot im distroless-Image).
+      - /srv/palbuddies-data:/data
+    networks:
+      - edge
+
+networks:
+  # Ueber dieses Netz erreicht der edge-nginx den Dienst als "palbuddies-gb".
+  edge:
+    external: true
