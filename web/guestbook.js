@@ -15,10 +15,18 @@
   if (!form) return;
   const list = $('#gb-list');
   const fileInput = $('#gb-file');
-  const fileLabel = $('#gb-file-label');
-  const previews = $('#gb-previews');
+  const photos = $('#gb-photos');
+  const addTile = $('#gb-add');
+  const hint = $('#gb-hint');
   const lightbox = $('#gb-lightbox');
   const submitBtn = form.querySelector('.gb-submit');
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
 
   /* ---------- Toast (gleiches Element wie script.js) ---------- */
   const toastEl = $('#toast');
@@ -84,29 +92,32 @@
     });
   }
 
+  // Statisches Icon, enthält keine Nutzerdaten
+  const XMARK = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
   function renderPreviews() {
-    previews.replaceChildren(...images.map((item, i) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'gb-preview';
-      const img = document.createElement('img');
+    photos.querySelectorAll('.gb-preview').forEach((node) => node.remove());
+    images.forEach((item, i) => {
+      const wrap = el('div', 'gb-preview');
+      const img = el('img');
       img.src = item.url;
-      img.alt = `Bild ${i + 1}`;
-      const del = document.createElement('button');
+      img.alt = `Foto ${i + 1}`;
+      const del = el('button');
       del.type = 'button';
-      del.textContent = '✕';
-      del.setAttribute('aria-label', `Bild ${i + 1} entfernen`);
+      del.innerHTML = XMARK;
+      del.setAttribute('aria-label', `Foto ${i + 1} entfernen`);
       del.addEventListener('click', () => {
         URL.revokeObjectURL(item.url);
         images.splice(i, 1);
         renderPreviews();
       });
       wrap.append(img, del);
-      return wrap;
-    }));
-    const left = MAX_IMAGES - images.length;
-    fileLabel.textContent = images.length ? `${images.length}/${MAX_IMAGES} Bilder` : 'Bilder';
-    fileInput.parentElement.classList.toggle('is-full', left === 0);
-    fileInput.disabled = left === 0;
+      photos.insertBefore(wrap, addTile);
+    });
+    addTile.hidden = images.length >= MAX_IMAGES;
+    hint.textContent = images.length
+      ? `${images.length} von ${MAX_IMAGES} Fotos`
+      : `Bis zu ${MAX_IMAGES} Fotos`;
   }
 
   function clearImages() {
@@ -119,7 +130,7 @@
     const files = [...fileInput.files];
     fileInput.value = ''; // gleiche Datei erneut wählbar
     const free = MAX_IMAGES - images.length;
-    if (files.length > free) toast(`Maximal ${MAX_IMAGES} Bilder`);
+    if (files.length > free) toast(`Maximal ${MAX_IMAGES} Fotos`);
     for (const file of files.slice(0, free)) {
       try {
         const blob = await compress(file);
@@ -171,24 +182,24 @@
 
   /* ---------- Einträge anzeigen ----------
      Nutzertext nur über textContent, nie über innerHTML (Schutz vor XSS). */
-  const dateFmt = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dateFmt = new Intl.DateTimeFormat('de-DE', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
   const isImageURL = (u) => typeof u === 'string' && u.startsWith(API + '/img/');
-
-  function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text != null) node.textContent = text;
-    return node;
-  }
 
   function renderEntry(entry) {
     const li = el('li', 'gb-entry');
+    const initial = [...entry.name.trim()][0] || '?';
+    const avatar = el('span', 'gb-avatar', initial.toUpperCase());
+    avatar.setAttribute('aria-hidden', 'true');
+    const body = el('div', 'gb-body');
+    li.append(avatar, body);
 
     const head = el('div', 'gb-head');
     const time = el('time', 'gb-date', dateFmt.format(entry.created * 1000));
     time.dateTime = new Date(entry.created * 1000).toISOString();
     head.append(el('strong', 'gb-name', entry.name), time);
-    li.append(head, el('p', 'gb-msg', entry.message));
+    body.append(head, el('p', 'gb-msg', entry.message));
 
     const imgs = (entry.images || []).filter((im) => isImageURL(im.full) && isImageURL(im.thumb));
     if (imgs.length) {
@@ -206,12 +217,13 @@
         btn.addEventListener('click', () => openLightbox(im.full));
         grid.append(btn);
       });
-      li.append(grid);
+      body.append(grid);
     }
 
     if (adminToken) {
-      const del = el('button', 'gb-del', '✕');
+      const del = el('button', 'gb-del');
       del.type = 'button';
+      del.innerHTML = XMARK;
       del.setAttribute('aria-label', `Eintrag von ${entry.name} löschen`);
       del.addEventListener('click', () => removeEntry(entry, li));
       li.append(del);

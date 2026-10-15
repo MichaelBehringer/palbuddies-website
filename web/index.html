@@ -26,7 +26,9 @@
   <meta name="twitter:card" content="summary_large_image">
 
   <link rel="preload" href="assets/logo.webp" as="image" type="image/webp">
-  <link rel="stylesheet" href="style.css">
+  <!-- ?v= bei jeder Änderung an CSS/JS hochzählen: nginx lässt Browser
+       .css/.js einen Tag cachen, mit neuer Version laden alle sofort neu -->
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -134,21 +136,24 @@
     <section class="card guestbook" aria-labelledby="gb-title">
       <h2 id="gb-title" class="section-title">Gästebuch</h2>
       <form class="gb-form" id="gb-form" novalidate>
-        <input class="gb-input" name="name" maxlength="40" placeholder="Dein Name" autocomplete="nickname" aria-label="Name" required>
-        <textarea class="gb-input" name="message" maxlength="500" rows="3" placeholder="Lass uns einen Gruß da 🤙" aria-label="Nachricht" required></textarea>
-        <!-- Honeypot: für Menschen unsichtbar, Bots füllen es aus -->
-        <div class="gb-hp" aria-hidden="true">
-          <label>Website <input name="website" tabindex="-1" autocomplete="off"></label>
+        <div class="gb-fields">
+          <input class="gb-input" name="name" maxlength="40" placeholder="Dein Name" autocomplete="nickname" aria-label="Name" required>
+          <textarea class="gb-input" name="message" maxlength="500" rows="3" placeholder="Lass uns einen Gruß da 🤙" aria-label="Nachricht" required></textarea>
         </div>
-        <div class="gb-previews" id="gb-previews"></div>
-        <div class="gb-actions">
-          <label class="gb-file">
-            <input type="file" id="gb-file" accept="image/*" multiple>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-            <span id="gb-file-label">Bilder</span>
+        <!-- Bot-Falle: für Menschen nie sichtbar (Inline-Style, wirkt auch
+             ohne CSS), Bots füllen das Feld aus und werden verworfen -->
+        <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+          <input name="website" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="gb-photos" id="gb-photos">
+          <label class="gb-add" id="gb-add">
+            <input type="file" id="gb-file" accept="image/*" multiple aria-label="Fotos hinzufügen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span>Foto</span>
           </label>
-          <button class="gb-submit" type="submit">Eintragen</button>
         </div>
+        <p class="gb-hint" id="gb-hint">Bis zu 3 Fotos</p>
+        <button class="gb-submit" type="submit">Eintragen</button>
       </form>
       <ol class="gb-list" id="gb-list"></ol>
     </section>
@@ -175,9 +180,9 @@
   <dialog class="gb-lightbox" id="gb-lightbox" aria-label="Bild"><img alt=""></dialog>
 
   <script src="reise.js" defer></script>
-  <script src="karte-land.js" defer></script>
-  <script src="trip.js" defer></script>
-  <script src="script.js" defer></script>
-  <script src="guestbook.js" defer></script>
+  <script src="karte-land.js?v=3" defer></script>
+  <script src="trip.js?v=3" defer></script>
+  <script src="script.js?v=3" defer></script>
+  <script src="guestbook.js?v=3" defer></script>
 </body>
 </html>

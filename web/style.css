@@ -737,144 +737,202 @@ button { font: inherit; color: inherit; }
 .gb-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+/* Eingabefelder als gruppierte Liste wie in iOS */
+.gb-fields {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 0 0 .5px rgba(60, 60, 67, .16), 0 6px 18px -10px rgba(40, 10, 60, .35);
+  overflow: hidden;
+  transition: box-shadow .2s ease;
+}
+.gb-fields:focus-within {
+  box-shadow: 0 0 0 2px rgba(229, 0, 126, .55), 0 6px 18px -10px rgba(40, 10, 60, .35);
 }
 .gb-input {
+  display: block;
   width: 100%;
   box-sizing: border-box;
-  padding: 12px 14px;
-  border: 1px solid rgba(29, 29, 31, .12);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, .7);
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 16px; /* verhindert Auto-Zoom auf iOS */
-  resize: vertical;
+  font-size: 17px; /* iOS-Standard, verhindert auch Auto-Zoom */
+  line-height: 1.35;
+  -webkit-appearance: none;
+          appearance: none;
+  resize: none;
 }
-.gb-input:focus { outline: 3px solid var(--pink); outline-offset: 1px; }
+.gb-input:focus { outline: none; }
+.gb-input::placeholder { color: rgba(60, 60, 67, .55); }
+/* Trennlinie mit Einzug wie in iOS-Listen */
+.gb-input + .gb-input {
+  background:
+    linear-gradient(rgba(60, 60, 67, .18), rgba(60, 60, 67, .18)) 16px 0 / calc(100% - 16px) .5px no-repeat;
+}
+.gb-input:is(textarea) { min-height: 96px; }
 
-/* Honeypot aus dem Bild schieben, aber nicht display:none (das erkennen Bots) */
-.gb-hp {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
-.gb-previews {
-  display: flex;
-  gap: 8px;
-}
-.gb-previews:empty { display: none; }
-.gb-preview {
-  position: relative;
-  width: 72px;
-  height: 72px;
-}
-.gb-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 12px;
-}
-.gb-preview button {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--ink);
-  color: #fff;
-  font-size: 13px;
-  line-height: 24px;
-  cursor: pointer;
-}
-
-.gb-actions {
+/* Foto-Kacheln */
+.gb-photos {
   display: flex;
   gap: 10px;
 }
-.gb-file,
-.gb-submit {
-  display: inline-flex;
+.gb-add,
+.gb-preview {
+  position: relative;
+  flex: none;
+  width: 76px;
+  height: 76px;
+  border-radius: 16px;
+}
+.gb-add {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 46px;
-  padding: 0 18px;
-  border-radius: 999px;
-  font: inherit;
-  font-size: 15px;
+  gap: 4px;
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 0 0 .5px rgba(60, 60, 67, .16), 0 6px 18px -10px rgba(40, 10, 60, .35);
+  color: var(--pink);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
   touch-action: manipulation;
-  transition: transform .25s var(--ease-spring), opacity .2s;
+  transition: transform .25s var(--ease-spring);
 }
-.gb-file {
-  flex: 1;
-  background: rgba(255, 255, 255, .7);
-  border: 1px solid rgba(29, 29, 31, .12);
-  color: var(--ink);
-}
-.gb-file:focus-within { outline: 3px solid var(--pink); outline-offset: 2px; }
-.gb-file input {
+.gb-add:active { transform: scale(.94); }
+.gb-add:focus-within { outline: 3px solid var(--pink); outline-offset: 2px; }
+.gb-add svg { width: 26px; height: 26px; }
+.gb-add input {
   position: absolute;
   width: 1px;
   height: 1px;
   opacity: 0;
+  pointer-events: none;
 }
-.gb-file svg { width: 20px; height: 20px; flex: none; }
-.gb-file.is-full { opacity: .5; pointer-events: none; }
-.gb-submit {
-  flex: 1;
+.gb-add[hidden] { display: none; }
+.gb-preview {
+  overflow: hidden;
+  box-shadow: 0 6px 18px -10px rgba(40, 10, 60, .45);
+  animation: pop-in .35s var(--ease-spring) both;
+}
+.gb-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gb-preview button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
   border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .5);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+}
+.gb-preview button svg { width: 10px; height: 10px; }
+
+.gb-hint {
+  margin: -4px 4px 0;
+  font-size: 13px;
+  color: rgba(60, 60, 67, .7);
+}
+
+.gb-submit {
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
   background: var(--brand-gradient);
   color: #fff;
-  text-shadow: 0 1px 4px rgba(120, 40, 0, .35);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(120, 40, 0, .3);
+  box-shadow: 0 10px 22px -12px rgba(229, 0, 126, .8);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform .25s var(--ease-spring), opacity .2s;
 }
+.gb-submit:active { transform: scale(.97); }
 .gb-submit:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
-.gb-file:active,
-.gb-submit:active { transform: scale(.96); }
 .gb-submit:disabled { opacity: .6; cursor: progress; }
 
+/* Einträge */
 .gb-list {
   list-style: none;
-  margin: 18px 0 0;
+  margin: 22px 0 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .gb-entry {
-  position: relative;
-  padding: 14px 4px;
-  border-top: 1px solid rgba(29, 29, 31, .1);
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .62);
+  box-shadow: 0 0 0 .5px rgba(60, 60, 67, .12);
+  animation: fade-up .4s ease-out both;
 }
+.gb-entry:has(.gb-del) { grid-template-columns: 40px 1fr auto; }
+.gb-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--brand-gradient);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  text-shadow: 0 1px 4px rgba(120, 40, 0, .3);
+}
+.gb-body { min-width: 0; }
 .gb-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
-  padding-right: 32px;
+  column-gap: 14px;
+  row-gap: 2px;
 }
 .gb-name {
+  font-size: 16px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 .gb-date {
-  flex: none;
+  margin-left: auto;
   font-size: 13px;
-  opacity: .6;
+  color: rgba(60, 60, 67, .6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .gb-msg {
   margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
 .gb-empty {
-  padding: 8px 4px 0;
-  opacity: .6;
+  padding: 6px 4px 0;
+  color: rgba(60, 60, 67, .7);
   text-align: center;
 }
 .gb-images {
@@ -888,10 +946,12 @@ button { font: inherit; color: inherit; }
   border: 0;
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(29, 29, 31, .06);
+  background: rgba(60, 60, 67, .08);
   aspect-ratio: 1;
   cursor: zoom-in;
+  transition: transform .25s var(--ease-spring);
 }
+.gb-thumb:active { transform: scale(.96); }
 .gb-thumb img {
   display: block;
   width: 100%;
@@ -900,29 +960,34 @@ button { font: inherit; color: inherit; }
 }
 .gb-thumb:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
 .gb-del {
-  position: absolute;
-  top: 10px;
-  right: 0;
-  width: 30px;
-  height: 30px;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 26px;
+  height: 26px;
+  padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--red);
-  color: #fff;
-  font-size: 15px;
+  background: rgba(226, 4, 17, .12);
+  color: var(--red);
   cursor: pointer;
 }
+.gb-del svg { width: 11px; height: 11px; }
 
 .gb-lightbox {
   max-width: 94vw;
   max-height: 90vh;
   padding: 0;
   border: 0;
-  border-radius: 14px;
+  border-radius: 16px;
   background: transparent;
   cursor: zoom-out;
 }
-.gb-lightbox::backdrop { background: rgba(0, 0, 0, .85); }
+.gb-lightbox::backdrop {
+  background: rgba(0, 0, 0, .82);
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+}
 .gb-lightbox img {
   display: block;
   max-width: 94vw;
