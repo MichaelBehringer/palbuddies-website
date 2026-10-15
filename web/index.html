@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PalBuddies</title>
+  <meta name="description" content="PalBuddies – Berry, DjDave, Wokky &amp; Tim_TMTM. Folg uns auf Instagram und TikTok: @palbuddies">
+  <meta name="theme-color" content="#fbb900">
+  <meta name="color-scheme" content="light">
+
+  <!-- Homescreen / App-Feeling -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PalBuddies">
+
+  <!-- Vorschau beim Teilen (WhatsApp, iMessage, Insta …) -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="PalBuddies">
+  <meta property="og:description" content="Berry, DjDave, Wokky &amp; Tim_TMTM – folg uns auf Instagram &amp; TikTok.">
+  <meta property="og:url" content="https://palbuddies.behringer.dev/">
+  <meta property="og:image" content="https://palbuddies.behringer.dev/assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preload" href="assets/logo.webp" as="image" type="image/webp">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Wellen-Hintergrund wie auf der Visitenkarte -->
+  <div class="waves" aria-hidden="true">
+    <div class="band" style="--top:18%; --c:#ec6603; --dur:28s; --amp:1"></div>
+    <div class="band" style="--top:36%; --c:#e20411; --dur:34s; --amp:.8; --dir:reverse"></div>
+    <div class="band" style="--top:56%; --c:#e5007e; --dur:30s; --amp:1"></div>
+    <div class="band" style="--top:76%; --c:#49277e; --dur:38s; --amp:.7; --dir:reverse"></div>
+  </div>
+
+  <main class="page">
+
+    <header class="hero">
+      <h1 class="logo">
+        <picture>
+          <source srcset="assets/logo.webp" type="image/webp">
+          <img src="assets/logo.png" alt="PalBuddies" width="1272" height="357">
+        </picture>
+      </h1>
+      <p class="tagline">Nǐ hǎo! <span lang="zh-Hant">你好</span></p>
+    </header>
+
+    <!-- Social Links – die Hauptsache -->
+    <nav class="links" aria-label="Social Media">
+      <a class="link-btn" href="https://www.instagram.com/palbuddies/" target="_blank" rel="noopener">
+        <span class="link-icon ig" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.4" cy="6.6" r="1.3" fill="currentColor"/></svg>
+        </span>
+        <span class="link-text">
+          <span class="link-label">Instagram</span>
+          <span class="link-handle">@palbuddies</span>
+        </span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+
+      <a class="link-btn" href="https://www.tiktok.com/@palbuddies" target="_blank" rel="noopener">
+        <span class="link-icon tt" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M16.6 3c.3 2.4 1.7 3.9 4 4.1v2.7c-1.4.1-2.7-.3-4-1.1v5.6c0 6.9-7.5 9.1-10.5 4.1-1.9-3.2-.7-8.9 5.6-9.1v2.9c-.5.1-1 .2-1.4.4-1.4.5-2.2 1.4-2 3 .4 3.1 6.1 4 5.6-2V3h2.7z"/></svg>
+        </span>
+        <span class="link-text">
+          <span class="link-label">TikTok</span>
+          <span class="link-handle">@palbuddies</span>
+        </span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </nav>
+
+    <!-- Countdown / Live-Status (Inhalt kommt aus reise.js) -->
+    <section class="card countdown" id="countdown" aria-live="off"></section>
+
+    <!-- Route & Zeitplan (Inhalt kommt aus reise.js) -->
+    <section class="card route" aria-labelledby="route-title">
+      <h2 id="route-title" class="section-title">Unsere Route</h2>
+      <div class="route-map" id="route-map"></div>
+      <ol class="timeline" id="timeline"></ol>
+    </section>
+
+    <!-- Die Crew
+         Foto hinzufügen: Bild als img/<name>.jpg ablegen (quadratisch, ~400x400px).
+         Solange kein Foto da ist, werden automatisch die Initialen angezeigt. -->
+    <section class="card crew" aria-labelledby="crew-title">
+      <h2 id="crew-title" class="section-title">Die Crew</h2>
+      <ul class="crew-grid">
+        <li>
+          <a class="member" href="https://www.instagram.com/berry_michi/" target="_blank" rel="noopener" aria-label="Berry auf Instagram (@berry_michi)">
+            <span class="avatar" data-initials="B">
+              <img src="img/berry.jpg" alt="" loading="lazy" onerror="this.remove()">
+            </span>
+            <span class="member-name">Berry</span>
+            <span class="member-handle">@berry_michi</span>
+          </a>
+        </li>
+        <li>
+          <a class="member" href="https://www.instagram.com/dj.dav3/" target="_blank" rel="noopener" aria-label="DjDave auf Instagram (@dj.dav3)">
+            <span class="avatar" data-initials="DD">
+              <img src="img/djdave.jpg" alt="" loading="lazy" onerror="this.remove()">
+            </span>
+            <span class="member-name">DjDave</span>
+            <span class="member-handle">@dj.dav3</span>
+          </a>
+        </li>
+        <li>
+          <a class="member" href="https://www.instagram.com/m94856/" target="_blank" rel="noopener" aria-label="Wokky auf Instagram (@m94856)">
+            <span class="avatar" data-initials="W">
+              <img src="img/wokky.jpg" alt="" loading="lazy" onerror="this.remove()">
+            </span>
+            <span class="member-name">Wokky</span>
+            <span class="member-handle">@m94856</span>
+          </a>
+        </li>
+        <li>
+          <a class="member" href="https://www.instagram.com/tims_uhr/" target="_blank" rel="noopener" aria-label="Tim_TMTM auf Instagram (@tims_uhr)">
+            <span class="avatar" data-initials="T">
+              <img src="img/tim.jpg" alt="" loading="lazy" onerror="this.remove()">
+            </span>
+            <span class="member-name">Tim_TMTM</span>
+            <span class="member-handle">@tims_uhr</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <button class="share-btn" id="share" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Seite teilen
+    </button>
+
+  </main>
+
+  <footer class="footer">
+    <a class="marquee" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" rel="noopener" aria-label="Never gonna give you up">
+      <span class="marquee-track" aria-hidden="true">
+        <span>Never gonna give you up • Never gonna let you down • Never gonna run around and desert you • </span>
+        <span>Never gonna give you up • Never gonna let you down • Never gonna run around and desert you • </span>
+      </span>
+    </a>
+    <p class="copy">© <span id="year">2026</span> PalBuddies · palbuddies.behringer.dev</p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="reise.js" defer></script>
+  <script src="karte-land.js" defer></script>
+  <script src="trip.js" defer></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
