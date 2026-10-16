@@ -75,6 +75,23 @@ Kombination noch nicht gibt. Beim Löschen eines Eintrags fallen seine
   neu übersetzte Zeichen pro 24 h und 30 neue Übersetzungen pro IP und Stunde.
   Bereits gespeicherte Übersetzungen gehen immer.
 
+## Wetter
+
+Der Countdown zeigt das aktuelle Wetter: vor der Reise an der ersten Station,
+unterwegs am aktuellen Ort (Koordinaten aus `lage` in `web/reise.js`), nach
+der Reise keins. Der Browser fragt `/api/guestbook/weather?lat=..&lon=..`, der
+Go-Server holt die Daten bei Open-Meteo (kein API-Key) und merkt sich jeden
+Ort 30 min. Die IPs der Besucher gehen so nicht an Dritte. Klappt die Abfrage
+nicht, fehlt die Wetterzeile einfach.
+
+## Reaktionen
+
+Unter jedem Eintrag: ❤️ 😂 🔥 🍜. Pro Gerät zählt jedes Emoji einmal (zufällige
+Geräte-ID im Browser), höchstens 120 Klicks pro IP und Stunde. Beim Löschen
+eines Eintrags fallen seine Reaktionen mit weg. Andere Emojis: Liste in
+`server/reactions.go` (`reactionEmojis`) und `web/guestbook.js` (`REACTIONS`)
+gleich halten, danach Backend neu bauen.
+
 ## Backup
 
 Es reicht, `/srv/palbuddies-data` zu sichern. Für eine konsistente Kopie der

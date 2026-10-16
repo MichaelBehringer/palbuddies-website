@@ -51,8 +51,9 @@ func newTestServer(t *testing.T, deeplURL string) *server {
 	}
 	t.Setenv("DEEPL_API_URL", deeplURL)
 	return &server{
-		store: st, translator: newTranslator("test-key"),
+		store: st, translator: newTranslator("test-key"), weather: newWeatherCache(),
 		lastPost: map[string]time.Time{}, translateLog: map[string][]time.Time{},
+		reactLog: map[string][]time.Time{},
 	}
 }
 

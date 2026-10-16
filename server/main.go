@@ -45,10 +45,12 @@ type server struct {
 	adminToken []byte
 
 	translator *translator // nil, wenn kein DEEPL_API_KEY gesetzt ist
+	weather    *weatherCache
 
 	mu           sync.Mutex
 	lastPost     map[string]time.Time
 	translateLog map[string][]time.Time
+	reactLog     map[string][]time.Time
 }
 
 func main() {
@@ -70,7 +72,9 @@ func main() {
 	s := &server{
 		store: st, imageDir: imageDir, adminToken: []byte(token),
 		translator: newTranslator(os.Getenv("DEEPL_API_KEY")),
+		weather:    newWeatherCache(),
 		lastPost:   map[string]time.Time{}, translateLog: map[string][]time.Time{},
+		reactLog: map[string][]time.Time{},
 	}
 	if s.translator == nil {
 		log.Print("DEEPL_API_KEY nicht gesetzt: Uebersetzen ist abgeschaltet")
@@ -81,7 +85,9 @@ func main() {
 	mux.HandleFunc("POST /api/guestbook", s.handleCreate)
 	mux.HandleFunc("DELETE /api/guestbook/{id}", s.handleDelete)
 	mux.HandleFunc("POST /api/guestbook/{id}/translate", s.handleTranslate)
+	mux.HandleFunc("POST /api/guestbook/{id}/react", s.handleReact)
 	mux.HandleFunc("GET /api/guestbook/img/{name}", s.handleImage)
+	mux.HandleFunc("GET /api/guestbook/weather", s.handleWeather)
 
 	srv := &http.Server{
 		Addr:              envOr("ADDR", ":8000"),

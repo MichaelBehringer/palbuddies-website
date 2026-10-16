@@ -1079,3 +1079,54 @@ button { font: inherit; color: inherit; }
   }
   .marquee-track { animation: none; }
 }
+
+/* Wetter im Countdown (trip.js) */
+.cd-weather {
+  margin: 1.4em 0 0; /* eine Leerzeile Abstand */
+  white-space: pre-line; /* Umbruch zwischen Temperatur und Wetterlage (\n in i18n.js) */
+  line-height: 1.4;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+/* Reaktionen im Gästebuch */
+.gb-react {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.gb-react button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 10px;
+  border: 1px solid rgba(0, 0, 0, .1);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .03);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, transform .1s;
+}
+.gb-react button:active { transform: scale(.94); }
+.gb-react button[aria-pressed="true"] {
+  border-color: var(--pink);
+  background: rgba(229, 0, 126, .1);
+}
+.gb-react button:disabled { cursor: progress; }
+.gb-react button:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+.gb-react-n {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.gb-react-n:empty { display: none; }
+.gb-react button[aria-pressed="true"] .gb-react-n { color: var(--pink); }
+@media (prefers-reduced-motion: reduce) {
+  .gb-react button { transition: none; }
+  .gb-react button:active { transform: none; }
+}

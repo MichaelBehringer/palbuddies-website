@@ -99,6 +99,63 @@
     return items; // Reihenfolge wie in reise.js
   }
 
+  /* ---------- Wetter am Aufenthaltsort ----------
+     Über /api/guestbook/weather (der Server fragt Open-Meteo und merkt sich
+     das Ergebnis 30 min). Ohne Antwort gibt es einfach keine Wetterzeile. */
+  const WEATHER_EVERY = 30 * 60 * 1000;
+  let weather = { key: '', data: null, fetched: 0 };
+
+  // WMO-Wettercode -> [Icon am Tag, Icon nachts, Textschlüssel]
+  function sky(code) {
+    if (code === 0) return ['☀️', '🌙', 'clear'];
+    if (code === 1) return ['🌤️', '🌙', 'mostlyClear'];
+    if (code === 2) return ['⛅', '☁️', 'partlyCloudy'];
+    if (code === 3) return ['☁️', '☁️', 'cloudy'];
+    if (code === 45 || code === 48) return ['🌫️', '🌫️', 'fog'];
+    if (code >= 51 && code <= 57) return ['🌦️', '🌧️', 'drizzle'];
+    if (code >= 61 && code <= 67) return ['🌧️', '🌧️', 'rain'];
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return ['🌨️', '🌨️', 'snow'];
+    if (code >= 80 && code <= 82) return ['🌦️', '🌧️', 'showers'];
+    if (code >= 95) return ['⛈️', '⛈️', 'thunder'];
+    return null;
+  }
+
+  // Vor der Reise die erste Station, unterwegs die aktuelle (am Reisetag das Ziel)
+  function weatherStop(d) {
+    const ph = phase(d);
+    if (ph === 'before') return stops.find((s) => Array.isArray(s.lage)) || null;
+    if (ph === 'after') return null;
+    const current = stops.filter((s) => stateOf(s, d) === 'now' && Array.isArray(s.lage));
+    return current[current.length - 1] || null;
+  }
+
+  // Läuft jede Sekunde mit, fragt aber nur bei neuem Ort oder nach 30 min
+  async function updateWeather() {
+    const s = weatherStop(now());
+    const key = s ? s.lage.join(',') : '';
+    if (key === weather.key && Date.now() - weather.fetched < WEATHER_EVERY) return;
+    weather = { key, data: key === weather.key ? weather.data : null, fetched: Date.now() };
+    if (!s) return;
+    try {
+      const res = await fetch(`/api/guestbook/weather?lat=${s.lage[0]}&lon=${s.lage[1]}`);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      if (weather.key === key) weather.data = data;
+    } catch (_) { /* keine Wetterzeile */ }
+    renderCountdown();
+  }
+
+  function weatherLine(d) {
+    const s = weatherStop(d);
+    const w = weather.data;
+    const look = w && sky(w.code);
+    if (!s || !look || weather.key !== s.lage.join(',')) return null;
+    return el('p', 'cd-weather', t('trip.weatherIn', {
+      icon: w.day ? look[0] : look[1], place: place(s), temp: Math.round(w.temp), sky: t('wx.' + look[2]),
+      time: localTime(s.zeitzone || HOME_TZ, d),
+    }));
+  }
+
   function renderCountdown() {
     const d = now();
     const ph = phase(d);
@@ -122,6 +179,8 @@
       countdownEl.append(row);
       countdownEl.append(el('p', 'cd-sub', t('trip.fromFrankfurt',
         { day: weekdayLabel(homeStart), time: localTime(HOME_TZ, START), place: place(firstStop) })));
+      const wx = weatherLine(d);
+      if (wx) countdownEl.append(wx);
       return;
     }
 
@@ -146,10 +205,13 @@
     bar.append(fill);
     countdownEl.append(bar);
 
+    // Steht das Wetter (mit Uhrzeit) darunter, hier ohne Uhrzeit
+    const wx = weatherLine(d);
     let where;
     if (current.length === 1) {
       const c = current[0];
-      where = t('trip.currentlyIn', { place: place(c), time: localTime(c.zeitzone, d) });
+      where = wx ? t('trip.currentlyInShort', { place: place(c) })
+        : t('trip.currentlyIn', { place: place(c), time: localTime(c.zeitzone, d) });
     } else if (current.length > 1) {
       where = t('trip.travelDay', { from: place(current[0]), to: place(current[current.length - 1]) });
     } else {
@@ -157,6 +219,7 @@
       where = next ? t('trip.onTheWayTo', { place: place(next) }) : t('trip.onTheWay');
     }
     countdownEl.append(el('p', 'cd-where', where));
+    if (wx) countdownEl.append(wx);
 
     const plan = todaysPlan(d, current);
     if (plan.length) {
@@ -356,6 +419,7 @@
   renderCountdown();
   renderMap();
   renderTimeline();
+  updateWeather();
 
   // Karte & Liste nur neu zeichnen, wenn sich ein Status ändert (sonst klappen offene Einträge zu)
   const signature = () => phase(now()) + stops.map((s) => stateOf(s, now())).join();
@@ -369,6 +433,7 @@
 
   setInterval(() => {
     renderCountdown();
+    updateWeather();
     const sig = signature();
     if (sig !== lastSig) { lastSig = sig; renderMap(); renderTimeline(); }
   }, 1000);

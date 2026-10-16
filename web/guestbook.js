@@ -9,6 +9,8 @@
   const MAX_IMAGES = 3;
   const MAX_SIDE = 1600;
   const ADMIN_KEY = 'gb-admin';
+  // Erlaubte Reaktionen, gleiche Liste wie reactionEmojis in server/reactions.go
+  const REACTIONS = ['❤️', '😂', '🔥', '🍜'];
 
   const $ = (sel) => document.querySelector(sel);
   const { t } = window.I18N;
@@ -202,6 +204,7 @@
     const msg = el('p', 'gb-msg', entry.message);
     body.append(head, msg);
     body.append(translateRow(entry, msg));
+    body.append(reactRow(entry));
 
     const imgs = (entry.images || []).filter((im) => isImageURL(im.full) && isImageURL(im.thumb));
     if (imgs.length) {
@@ -327,6 +330,80 @@
 
     show();
     row.append(btn, note);
+    return row;
+  }
+
+  /* ---------- Reaktionen ----------
+     Pro Gerät zählt jedes Emoji einmal. Das Gerät erkennt der Server an einer
+     zufälligen ID, welche Knöpfe gedrückt sind, merkt sich der Browser. */
+  const VOTER_KEY = 'gb-voter';
+  const REACTED_KEY = 'gb-reacted';
+
+  let voter = '';
+  try { voter = localStorage.getItem(VOTER_KEY) || ''; } catch (_) { /* kein Storage */ }
+  if (!/^[0-9a-f]{32}$/.test(voter)) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    voter = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+    try { localStorage.setItem(VOTER_KEY, voter); } catch (_) { /* gilt dann nur bis zum Neuladen */ }
+  }
+
+  let reacted = new Set(); // "id:emoji"
+  try { reacted = new Set(JSON.parse(localStorage.getItem(REACTED_KEY) || '[]')); } catch (_) { /* leer */ }
+  function saveReacted() {
+    try { localStorage.setItem(REACTED_KEY, JSON.stringify([...reacted])); } catch (_) { /* egal */ }
+  }
+
+  function reactRow(entry) {
+    const row = el('div', 'gb-react');
+    const refreshers = [];
+    entry.reactions ||= {};
+    for (const emoji of REACTIONS) {
+      const btn = el('button');
+      btn.type = 'button';
+      btn.setAttribute('aria-label', t('gb.react', { emoji }));
+      const count = el('span', 'gb-react-n');
+      btn.append(el('span', 'gb-react-emoji', emoji), count);
+      const key = entry.id + ':' + emoji;
+
+      function show() {
+        const n = entry.reactions[emoji] || 0;
+        count.textContent = n ? String(n) : '';
+        btn.setAttribute('aria-pressed', String(reacted.has(key)));
+      }
+
+      btn.addEventListener('click', async () => {
+        const on = !reacted.has(key);
+        const before = entry.reactions[emoji] || 0;
+        // sofort anzeigen, danach mit den Zahlen vom Server abgleichen
+        if (on) reacted.add(key); else reacted.delete(key);
+        entry.reactions[emoji] = Math.max(0, before + (on ? 1 : -1));
+        show();
+        btn.disabled = true;
+        try {
+          const res = await fetch(`${API}/${entry.id}/react`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emoji, voter, on }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw Object.assign(body, { status: res.status });
+          entry.reactions = body.reactions || {};
+          saveReacted();
+        } catch (err) {
+          if (on) reacted.delete(key); else reacted.add(key);
+          entry.reactions[emoji] = before;
+          toast(err && err.status ? errorText(err, err.status) : t('gb.offline'));
+        } finally {
+          btn.disabled = false;
+          // andere Knöpfe des Eintrags auch auffrischen (neue Zahlen vom Server)
+          refreshers.forEach((f) => f());
+        }
+      });
+
+      refreshers.push(show);
+      show();
+      row.append(btn);
+    }
     return row;
   }
 

@@ -36,6 +36,15 @@ CREATE TABLE IF NOT EXISTS translations (
 	created  INTEGER NOT NULL,
 	PRIMARY KEY (entry_id, lang)
 );
+-- Emoji-Reaktionen; voter ist eine zufaellige Geraete-ID aus dem Browser,
+-- pro Geraet zaehlt jedes Emoji einmal.
+CREATE TABLE IF NOT EXISTS reactions (
+	entry_id INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+	emoji    TEXT    NOT NULL,
+	voter    TEXT    NOT NULL,
+	created  INTEGER NOT NULL,
+	PRIMARY KEY (entry_id, emoji, voter)
+);
 `
 
 type store struct{ db *sql.DB }
@@ -48,11 +57,12 @@ type imageJSON struct {
 }
 
 type entryJSON struct {
-	ID      int64       `json:"id"`
-	Name    string      `json:"name"`
-	Message string      `json:"message"`
-	Created int64       `json:"created"`
-	Images  []imageJSON `json:"images"`
+	ID        int64          `json:"id"`
+	Name      string         `json:"name"`
+	Message   string         `json:"message"`
+	Created   int64          `json:"created"`
+	Images    []imageJSON    `json:"images"`
+	Reactions map[string]int `json:"reactions"`
 }
 
 func openStore(dataDir string) (*store, error) {
@@ -78,7 +88,7 @@ func (s *store) list(limit int) ([]entryJSON, error) {
 	entries := []entryJSON{}
 	index := map[int64]int{}
 	for rows.Next() {
-		e := entryJSON{Images: []imageJSON{}}
+		e := entryJSON{Images: []imageJSON{}, Reactions: map[string]int{}}
 		if err := rows.Scan(&e.ID, &e.Name, &e.Message, &e.Created); err != nil {
 			rows.Close()
 			return nil, err
@@ -96,18 +106,39 @@ func (s *store) list(limit int) ([]entryJSON, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	for rows.Next() {
 		var id int64
 		var file, thumb string
 		var w, h int
 		if err := rows.Scan(&id, &file, &thumb, &w, &h); err != nil {
+			rows.Close()
 			return nil, err
 		}
 		if i, ok := index[id]; ok {
 			entries[i].Images = append(entries[i].Images, imageJSON{
 				Full: imgPrefix + file, Thumb: imgPrefix + thumb, W: w, H: h,
 			})
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	rows, err = s.db.Query(`SELECT entry_id, emoji, COUNT(*) FROM reactions WHERE entry_id >= ? GROUP BY entry_id, emoji`, minID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var emoji string
+		var n int
+		if err := rows.Scan(&id, &emoji, &n); err != nil {
+			return nil, err
+		}
+		if i, ok := index[id]; ok {
+			entries[i].Reactions[emoji] = n
 		}
 	}
 	return entries, rows.Err()
@@ -208,4 +239,36 @@ func (s *store) translatedCharsSince(since int64) (int, error) {
 	var n int
 	err := s.db.QueryRow(`SELECT COALESCE(SUM(chars), 0) FROM translations WHERE created >= ?`, since).Scan(&n)
 	return n, err
+}
+
+// react setzt (on) oder entfernt eine Reaktion und gibt die neuen Zahlen des
+// Eintrags zurueck. Doppeltes Setzen zaehlt nur einmal.
+func (s *store) react(entryID int64, emoji, voter string, on bool, created int64) (counts map[string]int, found bool, err error) {
+	if _, ok, err := s.message(entryID); !ok || err != nil {
+		return nil, false, err
+	}
+	if on {
+		_, err = s.db.Exec(`INSERT OR IGNORE INTO reactions (entry_id, emoji, voter, created) VALUES (?, ?, ?, ?)`,
+			entryID, emoji, voter, created)
+	} else {
+		_, err = s.db.Exec(`DELETE FROM reactions WHERE entry_id = ? AND emoji = ? AND voter = ?`, entryID, emoji, voter)
+	}
+	if err != nil {
+		return nil, true, err
+	}
+	rows, err := s.db.Query(`SELECT emoji, COUNT(*) FROM reactions WHERE entry_id = ? GROUP BY emoji`, entryID)
+	if err != nil {
+		return nil, true, err
+	}
+	defer rows.Close()
+	counts = map[string]int{}
+	for rows.Next() {
+		var e string
+		var n int
+		if err := rows.Scan(&e, &n); err != nil {
+			return nil, true, err
+		}
+		counts[e] = n
+	}
+	return counts, true, rows.Err()
 }

@@ -231,24 +231,30 @@ func (s *server) handleTranslate(w http.ResponseWriter, r *http.Request) {
 // allowTranslate: hoechstens translatePerHour neue (nicht gecachte)
 // Uebersetzungen pro IP und Stunde.
 func (s *server) allowTranslate(ip string, now time.Time) bool {
+	return s.allowN(s.translateLog, ip, now, translatePerHour)
+}
+
+// allowN erlaubt pro IP hoechstens n Aktionen in der letzten Stunde.
+// hist ist das Protokoll der jeweiligen Aktion (translateLog, reactLog).
+func (s *server) allowN(hist map[string][]time.Time, ip string, now time.Time, n int) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cutoff := now.Add(-time.Hour)
-	recent := s.translateLog[ip][:0]
-	for _, t := range s.translateLog[ip] {
+	recent := hist[ip][:0]
+	for _, t := range hist[ip] {
 		if t.After(cutoff) {
 			recent = append(recent, t)
 		}
 	}
-	if len(recent) >= translatePerHour {
-		s.translateLog[ip] = recent
+	if len(recent) >= n {
+		hist[ip] = recent
 		return false
 	}
-	s.translateLog[ip] = append(recent, now)
-	if len(s.translateLog) > 1000 {
-		for k, ts := range s.translateLog {
+	hist[ip] = append(recent, now)
+	if len(hist) > 1000 {
+		for k, ts := range hist {
 			if len(ts) == 0 || ts[len(ts)-1].Before(cutoff) {
-				delete(s.translateLog, k)
+				delete(hist, k)
 			}
 		}
 	}
