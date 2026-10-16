@@ -27,6 +27,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* kein Gummiband-Effekt am Seitenende – sonst blitzt die Grundfarbe durch */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -34,7 +36,8 @@ body {
   min-height: 100svh;
   font-family: var(--font);
   color: var(--ink);
-  background: var(--yellow);
+  /* unterstes Farbband – falls doch mal Fläche unter dem Hintergrund sichtbar wird */
+  background: var(--purple);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
@@ -49,7 +52,13 @@ button { font: inherit; color: inherit; }
 /* ---------- Wellen-Hintergrund ---------- */
 .waves {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* feste Höhe (größter Viewport): ändert sich nicht, wenn die Browserleiste
+     beim Scrollen ein-/ausfährt – so springen die Wellen nicht mit */
+  height: 100vh;
+  height: 100lvh;
   z-index: -1;
   overflow: hidden;
   background: var(--yellow);
