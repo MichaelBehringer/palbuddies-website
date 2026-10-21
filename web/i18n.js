@@ -113,6 +113,11 @@ window.I18N = (() => {
       'mo.delete': 'Foto-Post löschen',
       'mo.confirmDelete': 'Diesen Foto-Post wirklich löschen?',
       'mo.empty': 'Noch keine Fotos – poste das erste!',
+      'mo.new': 'Neu',
+      'mo.photo1': '1 Foto',
+      'mo.photos': '{n} Fotos',
+      'mo.lastIn': 'zuletzt {place}, {ago}',
+      'mo.justNow': 'gerade eben',
 
       'st.title': 'Besucher',
       'st.today': 'Heute',
@@ -238,6 +243,11 @@ window.I18N = (() => {
       'mo.delete': 'Delete photo post',
       'mo.confirmDelete': 'Really delete this photo post?',
       'mo.empty': 'No photos yet – post the first one!',
+      'mo.new': 'New',
+      'mo.photo1': '1 photo',
+      'mo.photos': '{n} photos',
+      'mo.lastIn': 'latest: {place}, {ago}',
+      'mo.justNow': 'just now',
 
       'st.title': 'Visitors',
       'st.today': 'Today',

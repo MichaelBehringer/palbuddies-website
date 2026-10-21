@@ -289,21 +289,123 @@
   });
 
   /* ---------- Anzeigen ----------
+     Zugeklappt: eine Zeile mit Anzahl, letztem Ort und Vorschau. Aufgeklappt:
+     nach Tag und Station gruppiert, der neueste Tag offen, ältere zu.
      Text nur über textContent (Schutz vor XSS). */
+  const wrap = $('#mo-wrap');
+  const sub = $('#mo-sub');
+  const stack = $('#mo-stack');
+  const newBadge = $('#mo-new');
+  const SEEN_KEY = 'mo-seen';
+  const NEW_WITHOUT_SEEN = 2 * 86400; // Erstbesuch: so lange gilt ein Post als neu
+
   const isImageURL = (u) => typeof u === 'string' && u.startsWith(GB.API + '/img/');
-  const timeFmt = {};
-  function formatTime(unix, tz) {
-    const key = window.I18N.locale + tz;
-    timeFmt[key] ||= new Intl.DateTimeFormat(window.I18N.locale, {
-      weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz,
-    });
-    const text = timeFmt[key].format(unix * 1000);
+  const momentTime = (m) => m.taken || m.created;
+  const momentTz = (m) => { const s = stationByName(m.station); return (s && s.zeitzone) || HOME_TZ; };
+  const imagesOf = (m) => (m.images || []).filter((im) => isImageURL(im.full) && isImageURL(im.thumb));
+
+  const fmtCache = {};
+  function fmt(name, tz, opts) {
+    const key = window.I18N.locale + name + tz;
+    return (fmtCache[key] ||= new Intl.DateTimeFormat(window.I18N.locale, { ...opts, timeZone: tz }));
+  }
+  const ymd = (unix, tz) => fmt('ymd', tz, { year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(unix * 1000).reduce((o, x) => ({ ...o, [x.type]: x.value }), {});
+  const ymdKey = (unix, tz) => { const p = ymd(unix, tz); return `${p.year}-${p.month}-${p.day}`; };
+  const toUTC = (key) => { const [y, m, d] = key.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const dayDiff = (a, b) => Math.round((toUTC(b) - toUTC(a)) / 864e5);
+
+  function timeOnly(unix, tz) {
+    const text = fmt('time', tz, { hour: '2-digit', minute: '2-digit', hour12: false }).format(unix * 1000);
     return tz === HOME_TZ ? text : t('mo.localTime', { time: text });
+  }
+
+  // "Heute" / "Gestern" / "Do., 30. Okt."
+  function dayLabel(key, tz) {
+    const diff = dayDiff(key, ymdKey(Date.now() / 1000, tz));
+    if (diff === 0 || diff === 1) {
+      const s = new Intl.RelativeTimeFormat(window.I18N.locale, { numeric: 'auto' }).format(-diff, 'day');
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    return fmt('day', 'UTC', { weekday: 'short', day: 'numeric', month: 'short' }).format(toUTC(key));
+  }
+
+  // "Tag 4 von 25", nur während der Reise
+  const tripStart = ymdKey(new Date(R.abflug).getTime() / 1000, HOME_TZ);
+  const tripEnd = ymdKey(new Date(R.rueckkehr).getTime() / 1000, HOME_TZ);
+  function tripDay(key) {
+    const n = dayDiff(tripStart, key) + 1;
+    const total = dayDiff(tripStart, tripEnd) + 1;
+    return n >= 1 && n <= total ? t('trip.dayOf', { n, total }) : '';
+  }
+
+  function ago(unix) {
+    const sec = Math.round(unix - Date.now() / 1000);
+    const rtf = new Intl.RelativeTimeFormat(window.I18N.locale, { numeric: 'auto', style: 'short' });
+    for (const [unit, size] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
+      if (Math.abs(sec) >= size) return rtf.format(Math.round(sec / size), unit);
+    }
+    return t('mo.justNow');
+  }
+
+  function thumbStack(imgs, max) {
+    return imgs.slice(0, max).map((im) => {
+      const img = el('img');
+      img.src = im.thumb;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      return img;
+    });
+  }
+
+  // Aufeinanderfolgende Posts vom selben Tag und Ort gehören zusammen
+  function groupMoments() {
+    const groups = [];
+    for (const m of moments) {
+      const tz = momentTz(m);
+      const key = ymdKey(momentTime(m), tz) + '|' + m.station;
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.items.push(m);
+      else groups.push({ key, day: key.split('|')[0], tz, station: m.station, items: [m] });
+    }
+    return groups;
+  }
+
+  /* ---------- „Neu“-Badge ---------- */
+  let seen = 0;
+  try { seen = Number(localStorage.getItem(SEEN_KEY)) || 0; } catch (_) { /* kein Storage */ }
+  const newest = () => moments.reduce((max, m) => Math.max(max, m.created), 0);
+  function renderBadge() {
+    const n = newest();
+    newBadge.hidden = !n || (seen ? n <= seen : Date.now() / 1000 - n > NEW_WITHOUT_SEEN);
+  }
+  wrap.addEventListener('toggle', () => {
+    if (!wrap.open || !moments.length) return;
+    seen = newest();
+    try { localStorage.setItem(SEEN_KEY, String(seen)); } catch (_) { /* egal */ }
+    renderBadge();
+  });
+
+  function renderSummary() {
+    if (!moments.length) {
+      sub.textContent = GB.adminToken ? t('mo.empty') : '';
+      stack.replaceChildren();
+      return;
+    }
+    const photos = moments.reduce((n, m) => n + imagesOf(m).length, 0);
+    const last = moments[0];
+    const station = stationByName(last.station);
+    const where = last.place || (station ? stationLabel(station) : last.station);
+    const parts = [t(photos === 1 ? 'mo.photo1' : 'mo.photos', { n: photos })];
+    parts.push(where ? t('mo.lastIn', { place: where, ago: ago(momentTime(last)) }) : ago(momentTime(last)));
+    sub.textContent = parts.join(' · ');
+    stack.replaceChildren(...thumbStack(moments.flatMap(imagesOf), 3));
   }
 
   function renderMoment(m) {
     const li = el('li', 'mo-item');
-    const imgs = (m.images || []).filter((im) => isImageURL(im.full) && isImageURL(im.thumb));
+    const imgs = imagesOf(m);
     if (imgs.length) {
       const grid = el('div', 'mo-images');
       grid.dataset.n = String(Math.min(imgs.length, 3));
@@ -328,11 +430,10 @@
     li.append(el('p', 'mo-caption', m.caption));
 
     const meta = el('div', 'mo-meta');
-    const station = stationByName(m.station);
-    const where = [m.place, station ? stationLabel(station) : m.station].filter(Boolean).join(' · ');
-    if (where) {
+    // Station steht schon in der Gruppe, hier nur der genaue Ort
+    if (m.place || typeof m.lat === 'number') {
       const hasGps = typeof m.lat === 'number' && typeof m.lon === 'number';
-      const loc = el(hasGps ? 'a' : 'span', 'mo-where', '📍 ' + where);
+      const loc = el(hasGps ? 'a' : 'span', 'mo-where', '📍 ' + (m.place || t('mo.onMap')));
       if (hasGps) {
         loc.href = `https://www.openstreetmap.org/?mlat=${m.lat}&mlon=${m.lon}#map=16/${m.lat}/${m.lon}`;
         loc.target = '_blank';
@@ -341,8 +442,8 @@
       }
       meta.append(loc);
     }
-    const unix = m.taken || m.created;
-    const time = el('time', 'mo-time', formatTime(unix, (station && station.zeitzone) || HOME_TZ));
+    const unix = momentTime(m);
+    const time = el('time', 'mo-time', timeOnly(unix, momentTz(m)));
     time.dateTime = new Date(unix * 1000).toISOString();
     meta.append(time);
     li.append(meta);
@@ -352,9 +453,38 @@
       del.type = 'button';
       del.innerHTML = GB.XMARK;
       del.setAttribute('aria-label', t('mo.delete'));
-      del.addEventListener('click', () => removeMoment(m, li));
+      del.addEventListener('click', () => removeMoment(m));
       li.append(del);
     }
+    return li;
+  }
+
+  const groupOpen = new Map(); // key -> offen? (vom Besucher umgeschaltet)
+
+  function renderGroup(g, i) {
+    const li = el('li', 'mo-group');
+    const det = el('details');
+    det.open = groupOpen.has(g.key) ? groupOpen.get(g.key) : i === 0;
+    det.addEventListener('toggle', () => groupOpen.set(g.key, det.open));
+
+    const sum = el('summary');
+    const head = el('span', 'stop-head');
+    head.append(el('span', 'stop-name', dayLabel(g.day, g.tz)));
+    const station = stationByName(g.station);
+    const info = [station ? stationLabel(station) : g.station, tripDay(g.day)].filter(Boolean).join(' · ');
+    if (info) head.append(el('span', 'stop-dates', info));
+    const imgs = g.items.flatMap(imagesOf);
+    const preview = el('span', 'mo-stack mo-stack-sm');
+    preview.setAttribute('aria-hidden', 'true');
+    preview.append(...thumbStack(imgs, 3));
+    const count = el('span', 'mo-count', '📷 ' + imgs.length);
+    count.setAttribute('aria-label', t(imgs.length === 1 ? 'mo.photo1' : 'mo.photos', { n: imgs.length }));
+    sum.append(head, preview, count, el('span', 'stop-chev'));
+
+    const ol = el('ol', 'mo-list');
+    ol.append(...g.items.map(renderMoment));
+    det.append(sum, ol);
+    li.append(det);
     return li;
   }
 
@@ -363,8 +493,9 @@
   function render() {
     const admin = !!GB.adminToken;
     form.hidden = !admin;
-    list.replaceChildren(...moments.map(renderMoment));
-    if (admin && !moments.length) list.append(el('li', 'gb-empty', t('mo.empty')));
+    list.replaceChildren(...groupMoments().map(renderGroup));
+    renderSummary();
+    renderBadge();
     section.hidden = !admin && !moments.length;
   }
 
@@ -379,15 +510,14 @@
     render();
   }
 
-  async function removeMoment(m, li) {
+  async function removeMoment(m) {
     if (!confirm(t('mo.confirmDelete'))) return;
     try {
       const res = await fetch(`${API}/${m.id}`, { method: 'DELETE', headers: { 'X-Admin-Token': GB.adminToken } });
       if (res.status === 204 || res.status === 404) {
         moments = moments.filter((x) => x.id !== m.id);
-        li.remove();
         GB.toast(t('gb.deleted'));
-        if (!moments.length) render();
+        render(); // Gruppe und Zusammenfassung neu
       } else if (res.status === 403) {
         GB.toast(t('gb.adminInvalid'));
       } else {
