@@ -61,7 +61,11 @@
     return true;
   }
   applyAdminHash();
-  window.addEventListener('hashchange', () => { if (applyAdminHash()) load(); });
+  window.addEventListener('hashchange', () => {
+    if (!applyAdminHash()) return;
+    load();
+    window.dispatchEvent(new CustomEvent('adminchange'));
+  });
 
   /* ---------- Bilder auswählen und im Browser verkleinern ---------- */
   let images = []; // { blob, url }
@@ -438,6 +442,12 @@
   }
   lightbox.addEventListener('click', () => lightbox.close());
   lightbox.addEventListener('close', () => { lightboxImg.removeAttribute('src'); });
+
+  // Für moments.js und stats.js (laden nach dieser Datei)
+  window.GB = {
+    API, toast, compress, openLightbox, errorText, XMARK, voter,
+    get adminToken() { return adminToken; },
+  };
 
   window.addEventListener('langchange', () => {
     renderPreviews();

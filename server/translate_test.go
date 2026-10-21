@@ -53,7 +53,8 @@ func newTestServer(t *testing.T, deeplURL string) *server {
 	return &server{
 		store: st, translator: newTranslator("test-key"), weather: newWeatherCache(),
 		lastPost: map[string]time.Time{}, translateLog: map[string][]time.Time{},
-		reactLog: map[string][]time.Time{},
+		reactLog: map[string][]time.Time{}, visitLog: map[string][]time.Time{},
+		adminToken: []byte(testAdminToken),
 	}
 }
 

@@ -92,6 +92,42 @@ eines Eintrags fallen seine Reaktionen mit weg. Andere Emojis: Liste in
 `server/reactions.go` (`reactionEmojis`) und `web/guestbook.js` (`REACTIONS`)
 gleich halten, danach Backend neu bauen.
 
+## Besucherzähler
+
+Unten auf der Seite: Besucher heute, gesamt und nach Land (öffentlich). Der
+Browser meldet jeden Aufruf an `POST /api/guestbook/visit`, die Zahlen kommen
+von `GET /api/guestbook/stats` (Code: `server/visits.go`, `web/stats.js`).
+
+- Gezählt wird jedes Gerät einmal pro Tag (Europe/Berlin), erkannt an der
+  zufälligen Geräte-ID im Browser (dieselbe wie bei den Reaktionen). Gesamt =
+  verschiedene Geräte seit Start. Ohne localStorage zählt IP + Browser für
+  diesen einen Tag.
+- Gespeichert wird nur ein SHA-256-Hash und das Land, **keine IP**
+  (Tabelle `visits`).
+- Land kommt von Cloudflare (`CF-IPCountry`), dafür ist nichts einzustellen.
+- Nicht gezählt: Admins (Admin-Modus an), Bots (User-Agent), mehr als 30
+  Meldungen pro IP und Stunde.
+- Zähler zurücksetzen: `DELETE FROM visits;` (siehe Backup-Befehl unten,
+  statt `.backup` die SQL-Zeile).
+
+## Unterwegs (Fotos von uns)
+
+Im Admin-Modus erscheint unter der Route der Bereich „Unterwegs“ mit einem
+Formular: 1–6 Fotos, Bildunterschrift, Station (vorausgewählt die aktuelle
+aus `web/reise.js`) und optional ein genauerer Ort („Fushimi Inari“). Ohne
+Admin-Modus sieht man nur die Posts, ganz ohne Posts ist der Bereich weg.
+
+- Hat das Foto GPS-Daten, liest der Browser sie vor dem Verkleinern aus,
+  wählt die nächste Station (bis 100 km) vor und der Ort im Post wird ein
+  Link zu OpenStreetMap. Gespeichert auf ~10 m gerundet; „Entfernen“ im
+  Formular postet ohne Position.
+- **iPhone:** Den Standort gibt iOS nur mit, wenn man in der Fotoauswahl
+  oben auf „Optionen“ tippt und „Standort“ einschaltet.
+- Angezeigt wird die Aufnahmezeit aus dem Foto (sonst die Upload-Zeit) in
+  der Ortszeit der Station.
+- Löschen: ✕ am Post. Die Bilder liegen wie im Gästebuch in
+  `/srv/palbuddies-data/images`, ohne Metadaten.
+
 ## Backup
 
 Es reicht, `/srv/palbuddies-data` zu sichern. Für eine konsistente Kopie der

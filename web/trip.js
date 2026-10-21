@@ -415,6 +415,9 @@
     }
   }
 
+  // Für moments.js: Station, an der wir gerade sind (vor der Reise die erste)
+  window.TRIP = { currentStop: () => weatherStop(now()) };
+
   /* ---------- Start & Aktualisierung ---------- */
   renderCountdown();
   renderMap();

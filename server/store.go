@@ -45,6 +45,36 @@ CREATE TABLE IF NOT EXISTS reactions (
 	created  INTEGER NOT NULL,
 	PRIMARY KEY (entry_id, emoji, voter)
 );
+-- Besucherzaehler: ein Geraet pro Tag (Europe/Berlin). visitor ist ein
+-- SHA-256-Hash, country der Code von Cloudflare oder "".
+CREATE TABLE IF NOT EXISTS visits (
+	day     TEXT NOT NULL,
+	visitor TEXT NOT NULL,
+	country TEXT NOT NULL,
+	PRIMARY KEY (day, visitor)
+);
+-- "Unterwegs": Fotos, die nur Admins hochladen. lat/lon und taken sind
+-- optional (aus den EXIF-Daten des Originalfotos, im Browser ausgelesen).
+CREATE TABLE IF NOT EXISTS moments (
+	id      INTEGER PRIMARY KEY,
+	caption TEXT    NOT NULL,
+	place   TEXT    NOT NULL,
+	station TEXT    NOT NULL,
+	lat     REAL,
+	lon     REAL,
+	taken   INTEGER,
+	created INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS moment_images (
+	id        INTEGER PRIMARY KEY,
+	moment_id INTEGER NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+	file      TEXT    NOT NULL,
+	thumb     TEXT    NOT NULL,
+	w         INTEGER NOT NULL,
+	h         INTEGER NOT NULL,
+	pos       INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS moment_images_moment ON moment_images(moment_id);
 `
 
 type store struct{ db *sql.DB }
@@ -271,4 +301,161 @@ func (s *store) react(entryID int64, emoji, voter string, on bool, created int64
 		counts[e] = n
 	}
 	return counts, true, rows.Err()
+}
+
+// addVisit zaehlt ein Geraet fuer den Tag; added ist false, wenn es heute
+// schon gezaehlt wurde.
+func (s *store) addVisit(day, visitor, country string) (added bool, err error) {
+	res, err := s.db.Exec(`INSERT OR IGNORE INTO visits (day, visitor, country) VALUES (?, ?, ?)`, day, visitor, country)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+// stats: Geraete heute, verschiedene Geraete insgesamt und Geraete pro Land
+// (die ersten topN einzeln, der Rest zusammen in Others).
+func (s *store) stats(day string, topN int) (*statsJSON, error) {
+	out := &statsJSON{Countries: []countryJSON{}}
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM visits WHERE day = ?`, day).Scan(&out.Today); err != nil {
+		return nil, err
+	}
+	if err := s.db.QueryRow(`SELECT COUNT(DISTINCT visitor) FROM visits`).Scan(&out.Total); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Query(`SELECT country, COUNT(DISTINCT visitor) AS n FROM visits GROUP BY country ORDER BY n DESC, country`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var c countryJSON
+		if err := rows.Scan(&c.Code, &c.N); err != nil {
+			return nil, err
+		}
+		if c.Code != "" && len(out.Countries) < topN {
+			out.Countries = append(out.Countries, c)
+		} else {
+			out.Others += c.N
+		}
+	}
+	return out, rows.Err()
+}
+
+type momentJSON struct {
+	ID      int64       `json:"id"`
+	Caption string      `json:"caption"`
+	Place   string      `json:"place"`
+	Station string      `json:"station"`
+	Lat     *float64    `json:"lat"`
+	Lon     *float64    `json:"lon"`
+	Taken   *int64      `json:"taken"`
+	Created int64       `json:"created"`
+	Images  []imageJSON `json:"images"`
+}
+
+func (s *store) listMoments(limit int) ([]momentJSON, error) {
+	rows, err := s.db.Query(`SELECT id, caption, place, station, lat, lon, taken, created FROM moments
+		ORDER BY COALESCE(taken, created) DESC, id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	moments := []momentJSON{}
+	index := map[int64]int{}
+	for rows.Next() {
+		m := momentJSON{Images: []imageJSON{}}
+		if err := rows.Scan(&m.ID, &m.Caption, &m.Place, &m.Station, &m.Lat, &m.Lon, &m.Taken, &m.Created); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		index[m.ID] = len(moments)
+		moments = append(moments, m)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil || len(moments) == 0 {
+		return moments, err
+	}
+
+	rows, err = s.db.Query(`SELECT moment_id, file, thumb, w, h FROM moment_images ORDER BY moment_id, pos`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var file, thumb string
+		var w, h int
+		if err := rows.Scan(&id, &file, &thumb, &w, &h); err != nil {
+			return nil, err
+		}
+		if i, ok := index[id]; ok {
+			moments[i].Images = append(moments[i].Images, imageJSON{
+				Full: imgPrefix + file, Thumb: imgPrefix + thumb, W: w, H: h,
+			})
+		}
+	}
+	return moments, rows.Err()
+}
+
+type newMoment struct {
+	Caption, Place, Station string
+	Lat, Lon                *float64
+	Taken                   *int64
+	Created                 int64
+}
+
+func (s *store) insertMoment(m newMoment, imgs []savedImage) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	res, err := tx.Exec(`INSERT INTO moments (caption, place, station, lat, lon, taken, created) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		m.Caption, m.Place, m.Station, m.Lat, m.Lon, m.Taken, m.Created)
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	for i, img := range imgs {
+		if _, err := tx.Exec(`INSERT INTO moment_images (moment_id, file, thumb, w, h, pos) VALUES (?, ?, ?, ?, ?, ?)`,
+			id, img.File, img.Thumb, img.W, img.H, i); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// deleteMoment wie delete: gibt die Bilddateien zum Entfernen zurueck.
+func (s *store) deleteMoment(id int64) (found bool, imgs []savedImage, err error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return false, nil, err
+	}
+	defer tx.Rollback()
+	rows, err := tx.Query(`SELECT file, thumb FROM moment_images WHERE moment_id = ?`, id)
+	if err != nil {
+		return false, nil, err
+	}
+	for rows.Next() {
+		var img savedImage
+		if err := rows.Scan(&img.File, &img.Thumb); err != nil {
+			rows.Close()
+			return false, nil, err
+		}
+		imgs = append(imgs, img)
+	}
+	rows.Close()
+	res, err := tx.Exec(`DELETE FROM moments WHERE id = ?`, id)
+	if err != nil {
+		return false, nil, err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return false, nil, nil
+	}
+	return true, imgs, tx.Commit()
 }

@@ -28,7 +28,7 @@
   <link rel="preload" href="assets/logo.webp" as="image" type="image/webp">
   <!-- ?v= bei jeder Änderung an CSS/JS hochzählen: nginx lässt Browser
        .css/.js einen Tag cachen, mit neuer Version laden alle sofort neu -->
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -91,6 +91,29 @@
       <h2 id="route-title" class="section-title" data-i18n="route.title">Unsere Route</h2>
       <div class="route-map" id="route-map"></div>
       <ol class="timeline" id="timeline"></ol>
+    </section>
+
+    <!-- Unterwegs: Fotos von uns (Inhalt aus moments.js, hochladen nur im
+         Admin-Modus). Ohne Fotos bleibt der Bereich ausgeblendet. -->
+    <section class="card moments" id="moments" aria-labelledby="mo-title" hidden>
+      <h2 id="mo-title" class="section-title" data-i18n="mo.title">Unterwegs</h2>
+      <form class="mo-form gb-form" id="mo-form" hidden novalidate>
+        <div class="gb-photos mo-photos" id="mo-photos">
+          <label class="gb-add" id="mo-add">
+            <input type="file" id="mo-file" accept="image/*" multiple aria-label="Fotos hinzufügen" data-i18n-attr="aria-label:gb.addPhotos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span data-i18n="gb.photo">Foto</span>
+          </label>
+        </div>
+        <p class="mo-gps" id="mo-gps" hidden></p>
+        <div class="gb-fields">
+          <textarea class="gb-input" name="caption" maxlength="300" rows="2" placeholder="Was machen wir gerade?" aria-label="Bildunterschrift" data-i18n-attr="placeholder:mo.caption;aria-label:mo.captionLabel" required></textarea>
+          <select class="gb-input mo-select" name="station" aria-label="Station" data-i18n-attr="aria-label:mo.station"></select>
+          <input class="gb-input" name="place" maxlength="60" placeholder="Ort genauer (optional), z. B. Fushimi Inari" aria-label="Ort" data-i18n-attr="placeholder:mo.place;aria-label:mo.placeLabel">
+        </div>
+        <button class="gb-submit" type="submit" data-i18n="mo.submit">Posten</button>
+      </form>
+      <ol class="mo-list" id="mo-list"></ol>
     </section>
 
     <!-- Die Crew
@@ -164,6 +187,13 @@
       <ol class="gb-list" id="gb-list"></ol>
     </section>
 
+    <!-- Besucherzähler (stats.js) -->
+    <section class="card stats" id="stats" aria-labelledby="st-title" hidden>
+      <h2 id="st-title" class="visually-hidden" data-i18n="st.title">Besucher</h2>
+      <p class="st-counts" id="st-counts"></p>
+      <ul class="st-countries" id="st-countries"></ul>
+    </section>
+
     <button class="share-btn" id="share" type="button">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span data-i18n="share.button">Seite teilen</span>
@@ -185,11 +215,13 @@
 
   <dialog class="gb-lightbox" id="gb-lightbox" aria-label="Bild"><img alt=""></dialog>
 
-  <script src="i18n.js?v=7" defer></script>
+  <script src="i18n.js?v=9" defer></script>
   <script src="reise.js" defer></script>
   <script src="karte-land.js?v=4" defer></script>
-  <script src="trip.js?v=6" defer></script>
+  <script src="trip.js?v=8" defer></script>
   <script src="script.js?v=4" defer></script>
-  <script src="guestbook.js?v=5" defer></script>
+  <script src="guestbook.js?v=7" defer></script>
+  <script src="moments.js?v=2" defer></script>
+  <script src="stats.js?v=2" defer></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -51,6 +52,9 @@ type server struct {
 	lastPost     map[string]time.Time
 	translateLog map[string][]time.Time
 	reactLog     map[string][]time.Time
+	visitLog     map[string][]time.Time
+
+	stats statsCache
 }
 
 func main() {
@@ -74,7 +78,7 @@ func main() {
 		translator: newTranslator(os.Getenv("DEEPL_API_KEY")),
 		weather:    newWeatherCache(),
 		lastPost:   map[string]time.Time{}, translateLog: map[string][]time.Time{},
-		reactLog: map[string][]time.Time{},
+		reactLog: map[string][]time.Time{}, visitLog: map[string][]time.Time{},
 	}
 	if s.translator == nil {
 		log.Print("DEEPL_API_KEY nicht gesetzt: Uebersetzen ist abgeschaltet")
@@ -88,6 +92,11 @@ func main() {
 	mux.HandleFunc("POST /api/guestbook/{id}/react", s.handleReact)
 	mux.HandleFunc("GET /api/guestbook/img/{name}", s.handleImage)
 	mux.HandleFunc("GET /api/guestbook/weather", s.handleWeather)
+	mux.HandleFunc("POST /api/guestbook/visit", s.handleVisit)
+	mux.HandleFunc("GET /api/guestbook/stats", s.handleStats)
+	mux.HandleFunc("GET /api/guestbook/moments", s.handleMoments)
+	mux.HandleFunc("POST /api/guestbook/moments", s.handleCreateMoment)
+	mux.HandleFunc("DELETE /api/guestbook/moments/{id}", s.handleDeleteMoment)
 
 	srv := &http.Server{
 		Addr:              envOr("ADDR", ":8000"),
@@ -161,33 +170,9 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var saved []savedImage
-	for _, fh := range files {
-		f, err := fh.Open()
-		if err != nil {
-			removeImages(s.imageDir, saved)
-			writeError(w, http.StatusBadRequest, "bad_image", "Bild konnte nicht gelesen werden")
-			return
-		}
-		data, err := io.ReadAll(f)
-		f.Close()
-		if err != nil {
-			removeImages(s.imageDir, saved)
-			writeError(w, http.StatusBadRequest, "bad_image", "Bild konnte nicht gelesen werden")
-			return
-		}
-		img, err := processImage(data, s.imageDir)
-		if err != nil {
-			removeImages(s.imageDir, saved)
-			if errors.Is(err, errBadImage) {
-				writeError(w, http.StatusBadRequest, "bad_image", "Bildformat nicht unterstützt (JPEG, PNG oder WebP)")
-			} else {
-				log.Printf("processImage: %v", err)
-				writeError(w, http.StatusInternalServerError, "internal", "Interner Fehler")
-			}
-			return
-		}
-		saved = append(saved, img)
+	saved, ok := s.saveUploads(w, files)
+	if !ok {
+		return
 	}
 
 	if err := s.store.insert(name, message, now.Unix(), saved); err != nil {
@@ -199,9 +184,48 @@ func (s *server) handleCreate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
 }
 
-func (s *server) handleDelete(w http.ResponseWriter, r *http.Request) {
+// saveUploads verarbeitet die hochgeladenen Bilder. Bei einem Fehler sind
+// schon gespeicherte Bilder wieder entfernt und die Antwort ist geschrieben.
+func (s *server) saveUploads(w http.ResponseWriter, files []*multipart.FileHeader) ([]savedImage, bool) {
+	var saved []savedImage
+	for _, fh := range files {
+		f, err := fh.Open()
+		if err != nil {
+			removeImages(s.imageDir, saved)
+			writeError(w, http.StatusBadRequest, "bad_image", "Bild konnte nicht gelesen werden")
+			return nil, false
+		}
+		data, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			removeImages(s.imageDir, saved)
+			writeError(w, http.StatusBadRequest, "bad_image", "Bild konnte nicht gelesen werden")
+			return nil, false
+		}
+		img, err := processImage(data, s.imageDir)
+		if err != nil {
+			removeImages(s.imageDir, saved)
+			if errors.Is(err, errBadImage) {
+				writeError(w, http.StatusBadRequest, "bad_image", "Bildformat nicht unterstützt (JPEG, PNG oder WebP)")
+			} else {
+				log.Printf("processImage: %v", err)
+				writeError(w, http.StatusInternalServerError, "internal", "Interner Fehler")
+			}
+			return nil, false
+		}
+		saved = append(saved, img)
+	}
+	return saved, true
+}
+
+// isAdmin prueft das Admin-Token im Header X-Admin-Token.
+func (s *server) isAdmin(r *http.Request) bool {
 	token := []byte(r.Header.Get("X-Admin-Token"))
-	if subtle.ConstantTimeCompare(token, s.adminToken) != 1 {
+	return len(token) > 0 && subtle.ConstantTimeCompare(token, s.adminToken) == 1
+}
+
+func (s *server) handleDelete(w http.ResponseWriter, r *http.Request) {
+	if !s.isAdmin(r) {
 		writeError(w, http.StatusForbidden, "forbidden", "Nicht erlaubt")
 		return
 	}
